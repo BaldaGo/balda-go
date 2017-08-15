@@ -1,0 +1,5 @@
+{
+    "host": "127.0.0.1",
+    "port": 8888,
+    "logger_format": "%{color}%{time:15:04:05.000} %{callpath} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}"
+}
