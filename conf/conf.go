@@ -11,6 +11,7 @@ package conf
 import (
 	// System
 	"encoding/json"
+	"errors"
 	"os"
 	// Third-party
 	// Project
@@ -38,21 +39,21 @@ type Config struct {
  * Read the file by the given filename @param file,
  * open it and parse from json to internal Go struct and return it
  **/
-func NewConfig(file string, debug bool) *Config {
+func NewConfig(file string, debug bool) (*Config, error) {
 	if file == "" {
 		file = "./conf/config.json"
 	}
 	f, err := os.Open(file)
 	if err != nil {
-		panic("Can't read config file: " + file)
+		return nil, errors.New("Can't read config file: " + file)
 	}
 
 	decoder := json.NewDecoder(f)
 	config := new(Config)
 
 	if decoder.Decode(config) != nil {
-		panic("Malformed config json file")
+		return nil, errors.New("Malformed config json file")
 	}
 
-	return config
+	return config, nil
 }

@@ -9,12 +9,14 @@ package server
 
 import (
 	// System
+	"fmt"
 	"strconv"
 
 	// Third-party
 
-	// Priject
-	"./square"
+	// Project
+	"github.com/BaldaGo/game/logger"
+	"github.com/BaldaGo/game/server/square"
 	"github.com/reiver/go-oi"
 	"github.com/reiver/go-telnet"
 )
@@ -59,12 +61,14 @@ func (s *Server) PreRun() {
  * @param[in] port Port where server will listen connections
  * @param[in] debug Flag, write debug info if given
  */
-func (s *Server) Run(host string, port uint, debug bool) {
+func (s *Server) Run(host string, port uint, debug bool) error {
 	if err := telnet.ListenAndServe(host+":"+strconv.Itoa(int(port)), s.handler); err != nil {
 		logger.Log.Critical("Server failed to startup on: %s:%d (%s)", host, port, err.Error())
+		return err
 	}
 
 	//TODO
+	return nil
 }
 
 /**
@@ -92,13 +96,13 @@ func (h handler) ServeTELNET(ctx telnet.Context, w telnet.Writer, r telnet.Reade
 		n, err := r.Read(p)
 
 		if n > 0 {
-			logger.Log.Info("Readed %d bytes from client", n)
+			logger.Log.Info(fmt.Sprintf("Readed %d bytes from client", n))
 			//TODO: Validate and parse request, build and broad cast response
 			oi.LongWrite(w, p[:n]) // Echo
 		}
 
 		if err != nil {
-			logger.Warn.Info("An error occured: %s", err.Error())
+			logger.Log.Warning("An error occured: %s", err.Error())
 			break
 		}
 	}

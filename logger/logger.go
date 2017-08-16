@@ -23,12 +23,17 @@ var Log = logging.MustGetLogger("logger")
  * @brief Initialize logger with given format string
  * @param[in] fmt Logger format string
  */
-func InitLogger(fmt string) {
+func InitLogger(fmt string) error {
 	backend := logging.NewLogBackend(os.Stderr, "> ", 0)
 
-	format := logging.MustStringFormatter(fmt)
+	format, err := logging.NewStringFormatter(fmt)
+	if err != nil {
+		return err
+	}
 
 	log := logging.NewBackendFormatter(backend, format)
 
 	logging.SetBackend(log)
+
+	return nil
 }
