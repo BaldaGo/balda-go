@@ -13,7 +13,7 @@ package square
  * Class, provides gaming 5*5 area
  */
 type Square struct {
-	matrix [5][5]rune
+	matrix [][]rune
 }
 
 /**
