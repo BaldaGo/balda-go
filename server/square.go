@@ -22,9 +22,11 @@ type Square struct {
 	usedWords []string
 }
 
-/*
- Constructor of Square object
-*/
+/**
+ * @brief Constructor of Square
+ *
+ * Create new Square and initialize them with random word
+ */
 func NewSquare(size int) *Square {
 	area := new(Square)
 	area.matrix = make([][]rune, size)
@@ -39,6 +41,10 @@ func NewSquare(size int) *Square {
 		area.matrix[2][i] = []rune("ворон")[i]
 	}
 	return area
+}
+
+func (area *Square) destructor() {
+	area = nil
 }
 
 /*
@@ -57,16 +63,16 @@ func (b Square) deepCopy(a Square) {
 /*
  To prevent the repetition of already founded words.
 */
-func (a *Square) addUsedWord(word string) {
-	a.usedWords = append(a.usedWords, word)
+func (area *Square) addUsedWord(word string) {
+	area.usedWords = append(area.usedWords, word)
 }
 
 /*
  Verification that the candidate word wasn't used already in this game.
 */
-func WordAlreadyInDict(dict []string, word []rune) bool {
-	for i := range dict {
-		if dict[i] == string(word) {
+func WordAlreadyInDict(listOfWords []string, word []rune) bool {
+	for i := range listOfWords {
+		if listOfWords[i] == string(word) {
 			return true
 		}
 	}
@@ -105,6 +111,7 @@ func (area Square) findFull(findX int, findY int, x int, y int, word []rune, che
 	}
 
 	areaCopy := NewSquare(len(area.matrix[0]))
+	defer areaCopy.destructor() //to kill him by garbage collector
 	areaCopy.deepCopy(area)
 	areaCopy.matrix[x][y] = '!'
 
@@ -113,7 +120,6 @@ func (area Square) findFull(findX int, findY int, x int, y int, word []rune, che
 	}
 
 	if len(word) == 1 {
-		areaCopy = nil
 		if checker {
 			return 1
 		} else {
@@ -128,16 +134,24 @@ func (area Square) findFull(findX int, findY int, x int, y int, word []rune, che
 		areaCopy.findFull(findX, findY, x-1, y, word[1:], checker) +
 		areaCopy.findFull(findX, findY, x+1, y, word[1:], checker)
 
-	areaCopy = nil //to kill him by garbage collector
 	return result
 }
 
+/**
+ * @brief checkWord in Square.matrix on (x,y) position
+ * @param[in] x Horisontal coordinate of required position into word
+ * @param[in] y Vertical coordinate of required position into word
+ * @param[in] rune Word to find
+ * @param[in] symbol Letter added by player into word
+ * @return error false if not found, otherwise true
+ *
+ */
 /*
- Before calling findFull method, this method checks that:
- 	1) Сandidate word wasn't userd already
-	2) The new symbol will not overlap with the existing one.
-	3) Candidate word is real word of the Russian Language (check in dictionary)
-	4) There is a letter on area with which candidate word begins.
+  Before calling findFull method, this method checks that:
+  	1) Сandidate word wasn't userd already
+ 	2) The new symbol will not overlap with the existing one.
+ 	3) Candidate word is real word of the Russian Language (check in dictionary)
+ 	4) There is a letter on area with which candidate word begins.
 */
 func (area *Square) checkWord(x int, y int, symbol rune, word []rune) bool {
 
@@ -146,8 +160,9 @@ func (area *Square) checkWord(x int, y int, symbol rune, word []rune) bool {
 	if WordAlreadyInDict(area.usedWords, word) || area.matrix[x][y] != '-' {
 		return false
 	}
-	// TODO: 1) Add word checking in dicrionary (Алёна)
+	// TODO: 1) Add word checking in dictionary (Алёна)
 	tempArea := NewSquare(len(area.matrix[0]))
+	defer tempArea.destructor() //to kill him by garbage collector
 	tempArea.deepCopy(*area)
 
 	tempArea.AddSymbol(x, y, symbol)
@@ -158,29 +173,10 @@ func (area *Square) checkWord(x int, y int, symbol rune, word []rune) bool {
 				(tempArea.findFull(x, y, i, j, word, false) != 0) {
 				area.deepCopy(*tempArea)
 				area.addUsedWord(string(word))
-				tempArea = nil //to kill him by garbage collector
 				return true
 			}
 
 		}
 	}
-	tempArea = nil //to kill him by garbage collector
 	return false
-}
-
-func main() {
-
-	area := NewSquare(5)
-
-	//test game
-	fmt.Println(area.checkWord(3, 0, 'в', []rune("ВвОроН")))
-	fmt.Println(area.checkWord(1, 0, 'в', []rune("вворон")))
-	fmt.Println(area.checkWord(3, 2, 'ы', []rune("воРы")))
-	fmt.Println(area.checkWord(1, 3, 'г', []rune("рог")))
-	fmt.Println(area.checkWord(1, 4, 'а', []rune("НОГА")))
-	fmt.Println(area.checkWord(1, 2, 'ы', []rune("ВОРЫ")))
-	area.PrintArea()
-
-	area = nil
-
 }
