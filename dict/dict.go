@@ -9,11 +9,14 @@ import(
 	"unicode/utf8"
 )
 
-var WordMap map[string]bool
-var WordsOfAS []string
+var WordMap map[string]bool  // Map of words from dictionary
+var WordsOfAS []string       // Slice of words with AreaSize length
 var source rand.Source
 var randPtr *rand.Rand
 
+// as = AreaSize
+// path = "dict/dictionary.txt"
+// Initialization of map, slice and rand
 func Init(as int, path string) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -41,11 +44,13 @@ func Init(as int, path string) {
 	randPtr = rand.New(source)
 }
 
+// If word is in dictionary
 func CheckWord(word string) bool {
 	_, ok := WordMap[word]
 	return ok
 }
 
+// Random word with AreaSize length
 func RandWordOfAS() string {
 	return WordsOfAS[randPtr.Intn(len(WordsOfAS))]
 }
