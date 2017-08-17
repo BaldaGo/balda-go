@@ -35,10 +35,8 @@ func NewSquare(size int) *Square {
 		}
 	}
 	for i := range area.matrix[2] {
-		/* Setting random five-letter word from dictionary.
-		   "ворона" for example.
-		*/
-		area.matrix[2][i] = []rune("ворона")[i]
+		// TODO: Setting random five-letter word from dictionary. "ворон" for example.
+		area.matrix[2][i] = []rune("ворон")[i]
 	}
 	return area
 }
@@ -182,5 +180,7 @@ func main() {
 	fmt.Println(area.checkWord(1, 4, 'а', []rune("НОГА")))
 	fmt.Println(area.checkWord(1, 2, 'ы', []rune("ВОРЫ")))
 	area.PrintArea()
+
+	area = nil
 
 }
