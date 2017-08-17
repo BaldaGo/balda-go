@@ -28,7 +28,7 @@ import (
 type Server struct {
 	host    string
 	port    uint
-	square  square.Square
+	square  Square
 	handler telnet.Handler
 }
 
