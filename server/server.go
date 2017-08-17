@@ -15,10 +15,7 @@ import (
 	// Third-party
 
 	// Project
-	"github.com/BaldaGo/game/logger"
-	"github.com/BaldaGo/game/server/square"
-	"github.com/reiver/go-oi"
-	"github.com/reiver/go-telnet"
+	"github.com/BaldaGo/balda-go/logger"
 )
 
 /**
@@ -29,6 +26,8 @@ import (
  * which contributes sessions, users, games, scores and other
  */
 type Server struct {
+	host    string
+	port    uint
 	square  square.Square
 	handler telnet.Handler
 }

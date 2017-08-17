@@ -19,15 +19,31 @@ import (
 
 /**
  * @class Config
- * @brief Class, provides configuration of application from json file
+ * @brief Class, provides configuration for application from json file
  *
  * Config have struct same as json config struct
+ * It has a basic modules structure
  */
 type Config struct {
-	//TODO: add all needed structs
-	Host         string
-	Port         uint
+	ServerConf Server
+	LoggerConf Logger
+}
+
+/**
+ * @class Logger
+ * @brief Class, provides configuration for Logger
+ */
+type Logger struct {
 	LoggerFormat string
+}
+
+/**
+ * @class Server
+ * @brief Class, provides configuration for Server
+ */
+type Server struct {
+	Host string
+	Port uint
 }
 
 /**
@@ -39,10 +55,11 @@ type Config struct {
  * Read the file by the given filename @param file,
  * open it and parse from json to internal Go struct and return it
  **/
-func NewConfig(file string, debug bool) (*Config, error) {
+func NewConfig(file string) (*Config, error) {
 	if file == "" {
 		file = "./conf/config.json"
 	}
+
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, errors.New("Can't read config file: " + file)

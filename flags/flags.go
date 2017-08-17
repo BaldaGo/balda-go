@@ -24,10 +24,9 @@ import (
  * @brief Collect all environment variables and command-line arguments
  */
 type Options struct {
-	//TODO: add all needed options
-	LogFile    flags.Filename `long:"logfile" short:"l" description:"FILE"` ///< command-line argument: filename of log file
-	ConfigFile flags.Filename `long:"config" short:"c" description:"FILE"`  ///< command-line argument: filename of json config file
-	Debug      bool           `long:"debug" short:"d" description:""`       ///< command-line flag: debug if given
+	LogFile    flags.Filename `long:"logfile" short:"l" description:"Filename of log file"`
+	ConfigFile flags.Filename `long:"config" short:"c" description:"Filename of configuration json file (default: config.json)"`
+	Debug      bool           `long:"debug" short:"d" description:"Debug flug. If given, server runs in debug mode"`
 }
 
 /**

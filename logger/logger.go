@@ -14,21 +14,22 @@ import (
 	// Third-party
 	"github.com/op/go-logging"
 	// Project
+	"github.com/BaldaGo/balda-go"
 )
 
 /// Logger object
-var Log = logging.MustGetLogger("logger")
+var Log = logging.MustGetLogger("logger") // Ignore error because it is impossible that it happend
 
 /**
  * @brief Initialize logger with given format string
  * @param[in] fmt Logger format string
  */
-func InitLogger(fmt string) error {
+func InitLogger(config conf.Logger) error {
 	backend := logging.NewLogBackend(os.Stderr, "> ", 0)
 
-	format, err := logging.NewStringFormatter(fmt)
+	format, err := logging.NewStringFormatter(config.LoggerFormat)
 	if err != nil {
-		return err
+		return "Error occured while starting logger: " + err.Error()
 	}
 
 	log := logging.NewBackendFormatter(backend, format)

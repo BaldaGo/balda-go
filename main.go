@@ -16,26 +16,27 @@ import (
 	// Third-party
 
 	// Project
-	"github.com/BaldaGo/game/conf"
-	"github.com/BaldaGo/game/flags"
-	"github.com/BaldaGo/game/logger"
-	"github.com/BaldaGo/game/server"
+	"github.com/BaldaGo/balda-go/conf"
+	"github.com/BaldaGo/balda-go/flags"
+	"github.com/BaldaGo/balda-go/logger"
+	"github.com/BaldaGo/balda-go/server"
 )
 
 func main() {
 	flags := flags.NewFlags()
-	config, err := conf.NewConfig(string(flags.ConfigFile), flags.Debug)
+
+	config, err := conf.NewConfig(string(flags.ConfigFile))
 	if err != nil {
 		panic(err)
 	}
 
-	logger.InitLogger(config.LoggerFormat)
-	server := server.NewServer()
+	logger.InitLogger(config.Logger)
 
+	server := server.NewServer(config.Server)
 	logger.Log.Info("Server started listening on: %s:%d", config.Host, config.Port)
 
 	server.PreRun()
-	err = server.Run(config.Host, config.Port, flags.Debug)
+	err = server.Run()
 	if err != nil {
 		panic(err)
 	}
