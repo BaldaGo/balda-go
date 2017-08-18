@@ -2,57 +2,54 @@ package dict
 
 import(
 	"os"
-	"log"
 	"bufio"
 	"math/rand"
 	"time"
 	"unicode/utf8"
 )
 
-var WordMap map[string]bool  // Map of words from dictionary
-var WordsOfAS []string       // Slice of words with AreaSize length
-var source rand.Source
-var randPtr *rand.Rand
+var wordMap map[string]bool  // Map of words from dictionary
+var wordsOfAS []string       // Slice of words with AreaSize length
 
 // as = AreaSize
 // path = "dict/dictionary.txt"
 // Initialization of map, slice and rand
-func Init(as int, path string) {
+func Init(as int, path string) error {
 	file, err := os.Open(path)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer file.Close()
 
-	WordMap = make(map[string]bool)
+	wordMap = make(map[string]bool)
 	
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		str := scanner.Text()
-		_, ok := WordMap[str]
-		if (utf8.RuneCountInString(str) == as && !ok) {
-			WordsOfAS = append(WordsOfAS, str)
+		_, exist := wordMap[str]
+		if (utf8.RuneCountInString(str) == as && !exist) {
+			wordsOfAS = append(wordsOfAS, str)
 		}
-		WordMap[str] = true
+		wordMap[str] = true
 	}
 
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+	if err = scanner.Err(); err != nil {
+		return err
 	}
-	
-	source = rand.NewSource(time.Now().UnixNano())
-	randPtr = rand.New(source)
+
+	return nil
 }
 
 // If word is in dictionary
 func CheckWord(word string) bool {
-	_, ok := WordMap[word]
+	_, ok := wordMap[word]
 	return ok
 }
 
 // Random word with AreaSize length
 func RandWordOfAS() string {
-	return WordsOfAS[randPtr.Intn(len(WordsOfAS))]
+	rand.Seed(time.Now().UnixNano())
+	return wordsOfAS[rand.Intn(len(wordsOfAS))]
 }
 
 
