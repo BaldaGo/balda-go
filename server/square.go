@@ -10,6 +10,7 @@ package server
 import (
 	"fmt"
 	"strings"
+	"github.com/BaldaGo/balda-go/dict"
 )
 
 /*
@@ -36,9 +37,11 @@ func NewSquare(size int) *Square {
 			area.matrix[i][j] = '-'
 		}
 	}
-	for i := range area.matrix[2] {
-		// TODO: Setting random five-letter word from dictionary. "ворон" for example.
-		area.matrix[2][i] = []rune("ворон")[i]
+	word := dict.RandWordOfAS()
+	area.addUsedWord(word)
+	line := (size - 1) / 2
+	for i := range area.matrix[line] {
+		area.matrix[line][i] = []rune(word)[i]
 	}
 	return area
 }
@@ -70,9 +73,9 @@ func (area *Square) addUsedWord(word string) {
 /*
  Verification that the candidate word wasn't used already in this game.
 */
-func WordAlreadyInDict(listOfWords []string, word []rune) bool {
-	for i := range listOfWords {
-		if listOfWords[i] == string(word) {
+func (area *Square) wordAlreadyInDict(word []rune) bool {
+	for i := range area.usedWords {
+		if area.usedWords[i] == string(word) {
 			return true
 		}
 	}
@@ -94,10 +97,14 @@ func (area Square) PrintArea() {
 	fmt.Print("\n")
 }
 
+func (area Square) PrintUsedWords() {
+	fmt.Println(area.usedWords)
+}
+
 /*
 Adding symbol to game area cell.
 */
-func (area Square) AddSymbol(x int, y int, symbol rune) {
+func (area Square) addSymbol(x int, y int, symbol rune) {
 	area.matrix[x][y] = symbol
 }
 
@@ -153,19 +160,19 @@ func (area Square) findFull(findX int, findY int, x int, y int, word []rune, che
  	3) Candidate word is real word of the Russian Language (check in dictionary)
  	4) There is a letter on area with which candidate word begins.
 */
-func (area *Square) checkWord(x int, y int, symbol rune, word []rune) bool {
+func (area *Square) CheckWord(x int, y int, symbol rune, word []rune) bool {
 
 	word = []rune(strings.ToLower(string(word)))
 
-	if WordAlreadyInDict(area.usedWords, word) || area.matrix[x][y] != '-' {
+	if area.wordAlreadyInDict(word) || area.matrix[x][y] != '-' || !dict.CheckWord(string(word)) {
 		return false
-	}
-	// TODO: 1) Add word checking in dictionary (Алёна)
+	}	
+
 	tempArea := NewSquare(len(area.matrix[0]))
 	defer tempArea.destructor() //to kill him by garbage collector
 	tempArea.deepCopy(*area)
 
-	tempArea.AddSymbol(x, y, symbol)
+	tempArea.addSymbol(x, y, symbol)
 
 	for i := range area.matrix {
 		for j := range area.matrix[i] {
