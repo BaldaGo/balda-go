@@ -13,6 +13,7 @@ import (
 	"strings"
 	// Third-party
 	// Project
+	"github.com/BaldaGo/balda-go/dict"
 	"github.com/BaldaGo/balda-go/logger"
 )
 
@@ -42,9 +43,11 @@ func NewSquare(size uint) *Square {
 		}
 	}
 
-	for i := range area.matrix[2] {
-		// TODO: Setting random five-letter word from dictionary. "ворон" for example.
-		area.matrix[2][i] = []rune("ворон")[i]
+	word := dict.RandWordOfAS()
+	area.addUsedWord(word)
+	line := (size - 1) / 2
+	for i := range area.matrix[line] {
+		area.matrix[line][i] = []rune(word)[i]
 	}
 
 	return area
@@ -91,9 +94,9 @@ func (area *Square) addUsedWord(word string) {
  *
  * Find word into list of words
  */
-func WordAlreadyUsed(listOfWords []string, word []rune) bool {
-	for i := range listOfWords {
-		if listOfWords[i] == string(word) {
+func (area *Square) wordAlreadyUsed(word []rune) bool {
+	for i := range area.usedWords {
+		if area.usedWords[i] == string(word) {
 			logger.Log.Debugf("Word '%s' used already in this game", string(word))
 			return true
 		}
@@ -119,13 +122,17 @@ func (area Square) PrintArea() {
 	logger.Log.Debug("Gaming area printed")
 }
 
+func (area Square) PrintUsedWords() {
+	fmt.Println(area.usedWords)
+}
+
 /**
  * @brief Add symbol to game area cell
  * @param[in] x
  * @param[in] y
  * @param[in] symbol
  */
-func (area Square) AddSymbol(x int, y int, symbol rune) {
+func (area Square) addSymbol(x int, y int, symbol rune) {
 	area.matrix[x][y] = symbol
 	logger.Log.Debugf("New symbol '%c' added", symbol)
 }
@@ -167,7 +174,7 @@ func (area Square) findFull(findX int, findY int, x int, y int, word []rune, che
 }
 
 /**
- * @brief checkWord in Square.matrix on (x,y) position
+ * @brief CheckWord in Square.matrix on (x,y) position
  * @param[in] x Horisontal coordinate of required position into word
  * @param[in] y Vertical coordinate of required position into word
  * @param[in] rune Word to find
@@ -180,19 +187,19 @@ func (area Square) findFull(findX int, findY int, x int, y int, word []rune, che
  *	3) Candidate word is real word of the Russian Language (check in dictionary)
  *	4) There is a letter on area with which candidate word begins.
  */
-func (area *Square) checkWord(x int, y int, symbol rune, word []rune) bool {
+func (area *Square) CheckWord(x int, y int, symbol rune, word []rune) bool {
 
 	word = []rune(strings.ToLower(string(word)))
 
-	if WordAlreadyUsed(area.usedWords, word) || area.matrix[x][y] != '-' {
+	if area.wordAlreadyUsed(word) || area.matrix[x][y] != '-' || !dict.CheckWord(string(word)) {
 		return false
 	}
-	// TODO: 1) Add word checking in dictionary (Алёна)
+
 	tempArea := NewSquare(uint(len(area.matrix[0])))
 	defer tempArea.destructor() //to kill him by garbage collector
 	tempArea.deepCopy(*area)
 
-	tempArea.AddSymbol(x, y, symbol)
+	tempArea.addSymbol(x, y, symbol)
 
 	for i := range area.matrix {
 		for j := range area.matrix[i] {

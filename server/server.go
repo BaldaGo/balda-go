@@ -17,6 +17,7 @@ import (
 
 	// Project
 	"github.com/BaldaGo/balda-go/conf"
+	"github.com/BaldaGo/balda-go/dict"
 	"github.com/BaldaGo/balda-go/logger"
 )
 
@@ -67,7 +68,8 @@ func New(cfg conf.ServerConf) *Server {
  * Create area and dict, fill other heavy game fields of server
  */
 func (s *Server) PreRun(cfg conf.ServerConf) {
-	//TODO: Init dictionary
+	dict.Init(AreaSize, "dict/dictionary.txt")
+
 	s.Pool = NewPool(cfg.Concurrency)
 	s.Users = make(map[uint]User)
 	s.Sessions = make([]Session, cfg.NumberOfGames)
