@@ -33,7 +33,7 @@ type Options struct {
  * @brief Parse command-line and environment arguments, validate it and return
  * @return opts Pointer to filled Options object
  */
-func NewFlags() *Options {
+func New() *Options {
 	opts := new(Options)
 	p := flags.NewParser(opts, flags.HelpFlag)
 	args, err := p.Parse()
