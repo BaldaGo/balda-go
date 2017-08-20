@@ -12,7 +12,9 @@ import (
 	// System
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"time"
 	// Third-party
 	// Project
 )
@@ -25,44 +27,61 @@ import (
  * It has a basic modules structure
  */
 type Config struct {
-	ServerConf Server
-	LoggerConf Logger
+	Server ServerConf
+	Logger LoggerConf
 }
 
 /**
  * @class Logger
  * @brief Class, provides configuration for Logger
  */
-type Logger struct {
+type LoggerConf struct {
 	LoggerFormat string
+	File         string
 }
 
 /**
  * @class Server
  * @brief Class, provides configuration for Server
  */
-type Server struct {
-	Host string
-	Port uint
+type ServerConf struct {
+	Host              string
+	Port              uint
+	MaxSessions       uint
+	ReadingBufferSize uint
+	WaitTime          time.Duration
+	Timeout           time.Duration
+	Concurrency       int
+	NumberOfGames     uint
+	Game              GameConf
+}
+
+/**
+ * @class Game
+ * @brief Class, provides configuration for game process
+ */
+type GameConf struct {
+	AreaSize           uint
+	NumberUsersPerGame uint
+	MaxUsernameLength  uint
 }
 
 /**
  * @brief Constructor of Config
  * @param[in] file Path to json config file
- * @param[in] debug Flag, config with debug if given
  * @return config Pointer to the filled Config object
  *
  * Read the file by the given filename @param file,
  * open it and parse from json to internal Go struct and return it
  **/
-func NewConfig(file string) (*Config, error) {
+func New(file string) (*Config, error) {
 	if file == "" {
 		file = "./conf/config.json"
 	}
 
 	f, err := os.Open(file)
 	if err != nil {
-		return nil, errors.New("Can't read config file: " + file)
+		return nil, errors.New(fmt.Sprintf("Can't read config file: %s (%s)", file, err.Error()))
 	}
 
 	decoder := json.NewDecoder(f)
