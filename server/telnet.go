@@ -1,13 +1,17 @@
 package server
 
 import (
+	// System
 	"net"
+	// Third-party
+	// Project
+	"github.com/BaldaGo/balda-go/logger"
 )
 
 /**
- * @brief Handshake and disable buffer
+ * @brief Handshake telnet and disable buffering
  *
- *
+ * Send to remote client initial telnet hanbshake settings message
  */
 func initTelnet(conn net.Conn) error {
 	// https://tools.ietf.org/html/rfc854
@@ -18,11 +22,19 @@ func initTelnet(conn net.Conn) error {
 	}
 	_, err := conn.Write(telnetOptions)
 	if err != nil {
-		return err
+		logger.Log.Warning("Error occured while initializing telnet connection")
+		return logger.Trace(err, "Error occured while initializing telnet connection")
 	}
+
+	logger.Log.Debug("Established telnet connection")
 	return nil
 }
 
+/**
+ * @brief Read handshake telnet message from client
+ *
+ * Read bytes from client and check if it is a short message
+ */
 func readTelnet(conn net.Conn) error {
 	// https://tools.ietf.org/html/rfc854
 	reply := make([]byte, 1)
