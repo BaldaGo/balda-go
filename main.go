@@ -16,13 +16,17 @@ import (
 	// Third-party
 
 	// Project
-	"github.com/BaldaGo/game/conf"
-	"github.com/BaldaGo/game/flags"
-	"github.com/BaldaGo/game/logger"
-	"github.com/BaldaGo/game/server"
+	"github.com/BaldaGo/balda-go/conf"
+	"github.com/BaldaGo/balda-go/flags"
+	"github.com/BaldaGo/balda-go/logger"
+	"github.com/BaldaGo/balda-go/server"
+	"github.com/BaldaGo/balda-go/dict"
 )
 
 func main() {
+	AreaSize := 5
+	dict.Init(AreaSize, "dict/dictionary.txt")
+
 	flags := flags.NewFlags()
 	config, err := conf.NewConfig(string(flags.ConfigFile), flags.Debug)
 	if err != nil {
