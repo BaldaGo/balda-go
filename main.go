@@ -22,6 +22,12 @@ import (
 	"github.com/BaldaGo/balda-go/server"
 )
 
+/**
+ * @brief Enter point of the application
+ *
+ * Read command line flags, environment variables, configurations, dictionary
+ * Starts server
+ */
 func main() {
 	flags := flags.New()
 

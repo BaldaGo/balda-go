@@ -15,6 +15,7 @@ import (
 
 	// Third-party
 	"github.com/op/go-logging"
+
 	// Project
 	"github.com/BaldaGo/balda-go/conf"
 )
@@ -25,6 +26,7 @@ var Log = logging.MustGetLogger("logger") // Ignore error because it is impossib
 /**
  * @brief Initialize logger with given format string
  * @param[in] fmt Logger format string
+ * @return err Error if it occured
  */
 func Init(config conf.LoggerConf) error {
 	file := os.Stderr
@@ -50,10 +52,25 @@ func Init(config conf.LoggerConf) error {
 	return nil
 }
 
+/**
+ * @brief Add additional information into error message to trace it
+ * @param[in] err Error
+ * @param[in] msgs Additional information
+ * @return err Patched error
+ */
 func Trace(err error, msgs ...interface{}) error {
 	return errors.New(fmt.Sprintf("%s (%s)", msgs, err.Error()))
 }
 
+/**
+ * @brief Add format additional information into error message to trace it
+ * @param[in] err Error
+ * @param[in] format Format string
+ * @param[in] msgs Additional information
+ * @return err Patched error
+ *
+ * Same as Trace, but get args with format string
+ */
 func Tracef(err error, format string, msgs ...interface{}) error {
 	return Trace(err, fmt.Sprintf(format, msgs))
 }

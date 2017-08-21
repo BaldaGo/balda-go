@@ -1,17 +1,19 @@
-package server
-
 /**
  * @file square.go
- * @brief Game 5x5 area
+ * @brief Game area
  *
  * Contans method for find and initialize Square object
  */
+
+package server
 
 import (
 	// System
 	"fmt"
 	"strings"
+
 	// Third-party
+
 	// Project
 	"github.com/BaldaGo/balda-go/dict"
 	"github.com/BaldaGo/balda-go/logger"
@@ -19,20 +21,21 @@ import (
 
 /*
  * @class Square
- * @brief Class, provides gaming 5*5 area
+ * @brief Class, provides gaming area
  */
 type Square struct {
-	matrix    [][]rune ///<
-	usedWords []string ///<
+	matrix    [][]rune ///< Matrix of symbols - gaming area
+	usedWords []string ///< Array of used words
 }
 
 /**
  * @brief Constructor of Square
+ * @param[in] size Length side of the gaming area
  * @return Pointer to a new Squere object
  *
  * Create new Square and initialize them with random word
  */
-func NewSquare(size uint) *Square {
+func NewSquare(size int) *Square {
 	area := new(Square)
 	area.matrix = make([][]rune, size)
 
@@ -139,6 +142,12 @@ func (area Square) addSymbol(x int, y int, symbol rune) {
 
 /**
  * @brief Recursively finding full word from first symbol for validating player's move.
+ * @param[in] findX Horisontal coordinate of the cell in the checking word
+ * @param[in] findY Vertical coordinate of the cell in the checking word
+ * @param[in] x Horisontal coordinate of the checking cell
+ * @param[in] y Vertical coordinate of the checking cell
+ * @param[in] word Word to check on area
+ * @param[in] checker flag if x == findX and y == findY and word length == 1
  */
 func (area Square) findFull(findX int, findY int, x int, y int, word []rune, checker bool) int {
 
@@ -146,7 +155,7 @@ func (area Square) findFull(findX int, findY int, x int, y int, word []rune, che
 		return 0
 	}
 
-	areaCopy := NewSquare(uint(len(area.matrix[0])))
+	areaCopy := NewSquare(len(area.matrix[0]))
 	defer areaCopy.destructor() //to kill him by garbage collector
 	areaCopy.deepCopy(area)
 	areaCopy.matrix[x][y] = '!'
@@ -195,7 +204,7 @@ func (area *Square) CheckWord(x int, y int, symbol rune, word []rune) bool {
 		return false
 	}
 
-	tempArea := NewSquare(uint(len(area.matrix[0])))
+	tempArea := NewSquare(len(area.matrix[0]))
 	defer tempArea.destructor() //to kill him by garbage collector
 	tempArea.deepCopy(*area)
 

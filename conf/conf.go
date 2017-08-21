@@ -27,8 +27,8 @@ import (
  * It has a basic modules structure
  */
 type Config struct {
-	Server ServerConf
-	Logger LoggerConf
+	Server ServerConf ///< Server configurations
+	Logger LoggerConf ///< Logger configurations
 }
 
 /**
@@ -36,8 +36,8 @@ type Config struct {
  * @brief Class, provides configuration for Logger
  */
 type LoggerConf struct {
-	LoggerFormat string
-	File         string
+	LoggerFormat string ///< Format string (hot to output ingformation)
+	File         string ///< Log file (where to output information)
 }
 
 /**
@@ -45,15 +45,14 @@ type LoggerConf struct {
  * @brief Class, provides configuration for Server
  */
 type ServerConf struct {
-	Host              string
-	Port              uint
-	MaxSessions       uint
-	ReadingBufferSize uint
-	WaitTime          time.Duration
-	Timeout           time.Duration
-	Concurrency       int
-	NumberOfGames     uint
-	Game              GameConf
+	Host              string        ///< Host where server will run (default 127.0.0.1)
+	Port              int           ///< Port where server will run (default 8888)
+	NumberOfGames     int           ///< Maximum number of running sessions at a time (default 1000)
+	ReadingBufferSize int           ///< Size of reading buffer in bytes (default 1)
+	WaitTime          time.Duration ///< Time in milliseconds that server wait if users connection was lost (default 100)
+	Timeout           time.Duration ///< Timeout in milliseconds of long operatiobs (default 1000)
+	Concurrency       int           ///< Number of workers in goroutines pool (default 4000)
+	Game              GameConf      ///< Game configurations
 }
 
 /**
@@ -61,15 +60,15 @@ type ServerConf struct {
  * @brief Class, provides configuration for game process
  */
 type GameConf struct {
-	AreaSize           uint
-	NumberUsersPerGame uint
-	MaxUsernameLength  uint
+	AreaSize           int ///< Length side of the playing area (default 5)
+	NumberUsersPerGame int ///< Maximum number of gaming users at a time (default 4)
+	MaxUsernameLength  int ///< Maximum username length (default 255)
 }
 
 /**
  * @brief Constructor of Config
  * @param[in] file Path to json config file
- * @return config Pointer to the filled Config object
+ * @return config Pointer to the filled Config object or error if it occured
  *
  * Read the file by the given filename @param file,
  * open it and parse from json to internal Go struct and return it
