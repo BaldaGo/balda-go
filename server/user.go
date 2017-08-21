@@ -11,6 +11,7 @@ import (
 	// System
 	"bufio"
 	"errors"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -90,7 +91,7 @@ func (s *Server) login(c net.Conn) (*User, error) {
 	if err != nil {
 		return nil, logger.Trace(err, "Session ID must be a positive integer")
 	} else if int(SessionID) >= len(s.Sessions) {
-		return nil, errors.New("Session with ID=%d is not exists (Session ID is too big)", SessionID)
+		return nil, errors.New(fmt.Sprintf("Session with ID=%d is not exists (Session ID is too big)", SessionID))
 	} else if int(SessionID) < 0 {
 		return nil, errors.New("Session ID must be a positive integer")
 	}
