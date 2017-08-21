@@ -1,0 +1,13 @@
+version: '2'
+services:
+  balda:
+    build: .
+    command: /code/src/github.com/BaldaGo/balda-go/balda-go 1>access.log 2>error.log
+    ports:
+    - "8888:8888"
+    volumes:
+    - .:/code/github.com/BaldaGo/balda-go
+    links:
+    - gotrace
+  gotrace:
+    image: divan/golang:gotrace
