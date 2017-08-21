@@ -1,5 +1,20 @@
 {
-    "Host": "127.0.0.1",
-    "Port": 8888,
-    "LoggerFormat": "%{color}%{time:15:04:05.000} %{callpath} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}\n"
+    "Server" : {
+        "Host" : "127.0.0.1",
+        "Port" : 8888,
+        "ReadingBufferSize" : 1,
+        "WaitTime" : 100,
+        "Timeout" : 1000,
+        "Concurrency" : 4000,
+        "NumberOfGames" : 1000,
+        "Game" : {
+            "MaxUsernameLength" : 255,
+            "AreaSize" : 5,
+            "NumberUsersPerGame" : 4
+        }
+    },
+    "Logger" : {
+        "LoggerFormat" : "%{color}%{time:15:04:05.000} %{shortfile} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}\n",
+        "File" : ""
+    }
 }

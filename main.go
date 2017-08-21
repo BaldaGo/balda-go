@@ -20,30 +20,32 @@ import (
 	"github.com/BaldaGo/balda-go/flags"
 	"github.com/BaldaGo/balda-go/logger"
 	"github.com/BaldaGo/balda-go/server"
-	"github.com/BaldaGo/balda-go/dict"
 )
 
+/**
+ * @brief Enter point of the application
+ *
+ * Read command line flags, environment variables, configurations, dictionary
+ * Starts server
+ */
 func main() {
-	AreaSize := 5
-	dict.Init(AreaSize, "dict/dictionary.txt")
+	flags := flags.New()
 
-	flags := flags.NewFlags()
-	config, err := conf.NewConfig(string(flags.ConfigFile), flags.Debug)
+	config, err := conf.New(string(flags.ConfigFile))
 	if err != nil {
 		panic(err)
 	}
 
-	logger.InitLogger(config.LoggerFormat)
-	server := server.NewServer()
+	logger.Init(config.Logger)
 
-	logger.Log.Info("Server started listening on: %s:%d", config.Host, config.Port)
+	server := server.New(config.Server)
+	server.PreRun(config.Server)
+	defer server.PostRun()
 
-	server.PreRun()
-	err = server.Run(config.Host, config.Port, flags.Debug)
+	err = server.Run()
 	if err != nil {
 		panic(err)
 	}
-	server.PostRun()
 
 	logger.Log.Info("Server shutdowned")
 }
