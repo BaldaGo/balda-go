@@ -9,11 +9,8 @@ package server
 import (
 	// System
 	"sync"
-
 	// Third-party
-
 	// Project
-	"github.com/BaldaGo/balda-go/logger"
 )
 
 /// Task intreface (see @class Type)
