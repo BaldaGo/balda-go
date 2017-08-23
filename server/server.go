@@ -13,12 +13,17 @@ import (
 	"strconv"
 	"time"
 
+
 	// Third-party
+	_"github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
 
 	// Project
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/dict"
 	"github.com/BaldaGo/balda-go/logger"
+	"github.com/BaldaGo/balda-go/server/db"
+	"fmt"
 )
 
 /// Reading channel
@@ -26,6 +31,7 @@ type ReadingChan struct {
 	err     error  ///< Error
 	content []byte ///< Message
 }
+
 
 /**
  * @class Server
@@ -45,6 +51,7 @@ type Server struct {
 	MaxUsernameLength int           ///< Maximum length of user name
 	Sessions          []Session     ///< Array of active sessions
 	Users             map[int]User  ///< Map of SessionID => User
+	DB				  db.Database
 }
 
 /**
@@ -74,12 +81,30 @@ func New(cfg conf.ServerConf) *Server {
  *
  * Create area and dict, fill other heavy game fields of server
  */
-func (s *Server) PreRun(cfg conf.ServerConf) {
-	dict.Init(cfg.Game.AreaSize, "dict/dictionary.txt")
+func (s *Server) PreRun(cfg conf.ServerConf) error{
+	dict.Init(cfg.Game.AreaSize, cfg.DictPath)
 
 	s.Pool = NewPool(cfg.Concurrency)
 	s.Users = make(map[int]User)
 	s.Sessions = make([]Session, cfg.NumberOfGames)
+
+
+	var err error
+	if s.DB.DBConnect, err = gorm.Open(cfg.Database.Dialect,
+		fmt.Sprintf("%s@(%s:%d)/%s?%s",
+			cfg.Database.User,
+			cfg.Database.Host,
+			cfg.Database.Port,
+			cfg.Database.Name,
+			cfg.Database.Options));
+		err != nil{
+
+
+		return err
+	}
+
+	s.DB.LoadMigrations()
+	s.DB.LoadDictionary(cfg.DictPath)
 
 	for i := 0; i < len(s.Sessions); i++ {
 		s.Sessions[i].Game = NewGame()
@@ -87,6 +112,7 @@ func (s *Server) PreRun(cfg conf.ServerConf) {
 
 	s.Pool.Run()
 	logger.Log.Debugf("Server is configurated with next options: %+v\n", cfg)
+	return nil
 }
 
 /**
