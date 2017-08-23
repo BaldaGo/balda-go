@@ -5,7 +5,7 @@
  * Contans method for find and initialize Square object
  */
 
-package server
+package game
 
 import (
 	// System

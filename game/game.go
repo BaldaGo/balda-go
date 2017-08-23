@@ -4,7 +4,7 @@
  *
  * Contains Game type and methods to interact with it
  */
-package server
+package game
 
 import(
 	"errors"
