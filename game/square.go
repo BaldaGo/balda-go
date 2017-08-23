@@ -246,14 +246,12 @@ func (area *Square) CheckWord(x int, y int, symbol rune, word []rune) bool {
 }
 
 func (area *Square) IsFull() bool {
-	ok := true
-
 	for i := range area.matrix {
 		for j := range area.matrix[i] {
 			if (area.matrix[i][j] == '-') {
-				ok = false
+				return false
 			}
 		} 
 	}
-	return ok
+	return true
 }
