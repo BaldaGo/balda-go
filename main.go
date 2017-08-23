@@ -39,7 +39,7 @@ func main() {
 	logger.Init(config.Logger)
 
 	server := server.New(config.Server)
-	server.PreRun(config.Server)
+	server.PreRun(config.Server, config.Server.Game)
 	defer server.PostRun()
 
 	err = server.Run()
