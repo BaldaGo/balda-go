@@ -60,7 +60,6 @@ func NewGame(cfg conf.GameConf) *Game {
 	g.step = 0
 	g.onStart = false
 	g.onPut = false
-	g.AreaSize = AreaSize
 	
 	g.putting.funcMap = make(map[string]interface{})
 	g.putting.funcMap["coordX"] = g.coordX
