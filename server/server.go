@@ -13,10 +13,9 @@ import (
 	"strconv"
 	"time"
 
-
 	// Third-party
-	_"github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
+	_"github.com/go-sql-driver/mysql"
 
 	// Project
 	"github.com/BaldaGo/balda-go/conf"
@@ -98,7 +97,6 @@ func (s *Server) PreRun(cfg conf.ServerConf) error{
 			cfg.Database.Name,
 			cfg.Database.Options));
 		err != nil{
-
 
 		return err
 	}

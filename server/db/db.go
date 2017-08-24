@@ -19,10 +19,10 @@ package db
 
 import (
 	// System
-	"fmt"
-	"os"
 	"bufio"
+	"fmt"
 	"hash/fnv"
+	"os"
 
 	// Third-party
 	_ "github.com/go-sql-driver/mysql"
@@ -53,12 +53,12 @@ type User struct {
 	gorm.Model
 
 	Name       string `gorm:"unique"`
-	Wins       uint `gorm:"default:'0''"`
+	Wins       uint `gorm:"default:0"`
 	Password   uint32
 	IpAddr     string
-	Games 	   uint
+	Games      uint
 	Scores     uint
-	WordsCount uint `gorm:"default:'0'"`
+	WordsCount uint `gorm:"default:0"`
 }
 
 /**
@@ -83,8 +83,8 @@ type UserConnection struct {
  */
 type RusWord struct {
 	gorm.Model
-	Word string
-	Popularity uint `gorm:"default:'0'"`
+	Word       string
+	Popularity uint `gorm:"default:0"`
 }
 
 /**
@@ -115,7 +115,7 @@ type UsersLexicon struct {
 	RusWordID uint
 	Count     uint `gorm:"default:1"`
 
-	User    User `gorm:"ForeignKey:UserID"`
+	User    User    `gorm:"ForeignKey:UserID"`
 	RusWord RusWord `gorm:"ForeignKey:RusWordID"`
 }
 
@@ -165,7 +165,7 @@ func (db *Database) LoadDictionary(path string) error {
 
 	file, err := os.Open(path)
 
-	defer func() (error) {
+	defer func() error {
 		err := file.Close()
 		if err != nil {
 			return err
@@ -239,7 +239,9 @@ func (db *Database) AddUser(username string, password string, ip string) (*User,
 func (db *Database) CheckUser(username string, password string) (bool, error) {
 
 	user := &User{}
-	if res := db.DBConnect.Where("name = ? and password = ?", username, hash(password)).Find(&user); res.Error != nil {
+	if res := db.DBConnect.
+		Where("name = ? and password = ?", username, hash(password)).
+		Find(&user); res.Error != nil {
 		return false, res.Error
 	}
 	return true, nil
@@ -325,10 +327,13 @@ func (db *Database) RemoveUserFromSession(username string) (*UserInGame, error) 
 		return nil, res.Error
 	}
 
-
 	// TODO: try to change line 312 to "...user.ID).First(&session).Order("ID DESC").Delete... "
 	session := UserInGame{}
-	if res := db.DBConnect.Where("user_id = ?", user.ID).Find(&session).Order("ID").Delete(&session); res.Error != nil {
+	if res := db.DBConnect.
+		Where("user_id = ?", user.ID).
+		Find(&session).
+		Order("ID").
+		Delete(&session); res.Error != nil {
 		return nil, res.Error
 	}
 
@@ -359,14 +364,16 @@ func (db *Database) AddWord(username string, word string) (*UsersLexicon, error)
 	rusWord.Popularity++
 
 	userLexicon := UsersLexicon{}
-	if res := db.DBConnect.Where("user_id = ? and rus_word_id = ?", user.ID, rusWord.ID).First(&userLexicon); res.Error != nil {
+	if res := db.DBConnect.
+		Where("user_id = ? and rus_word_id = ?", user.ID, rusWord.ID).
+		First(&userLexicon); res.Error != nil {
 
 		userLexicon = UsersLexicon{UserID: user.ID, RusWordID: rusWord.ID}
 		if res := db.DBConnect.Create(&userLexicon); res.Error != nil {
 			return nil, res.Error
 		}
 
-		user.WordsCount ++
+		user.WordsCount++
 		if res := db.DBConnect.Save(&user); res.Error != nil {
 			return nil, res.Error
 		}
@@ -394,10 +401,9 @@ func (db *Database) AddWord(username string, word string) (*UsersLexicon, error)
  * for all players games ++
  * for winner wins ++
  */
-func (db *Database) GameOver(gameStatistics map[string][2]uint, gameID uint) (error) {
+func (db *Database) GameOver(gameStatistics map[string][2]uint, gameID uint) error {
 
-
-	for key, value := range gameStatistics{
+	for key, value := range gameStatistics {
 
 		user := User{}
 		if res := db.DBConnect.Where("name = ?", key).First(&user); res.Error != nil {
@@ -406,8 +412,7 @@ func (db *Database) GameOver(gameStatistics map[string][2]uint, gameID uint) (er
 		user.Games++
 		user.Scores += value[0]
 
-
-		if value[1] == 1{
+		if value[1] == 1 {
 			user.Wins++
 			gameSession := GameSession{}
 			if res := db.DBConnect.Where("id = ?", gameID).First(&gameSession); res.Error != nil {
@@ -420,7 +425,9 @@ func (db *Database) GameOver(gameStatistics map[string][2]uint, gameID uint) (er
 		}
 
 		userInGame := UserInGame{}
-		if res := db.DBConnect.Where("user_id = ? and game_id = ?", user.ID, gameID).First(&userInGame); res.Error != nil {
+		if res := db.DBConnect.
+			Where("user_id = ? and game_id = ?", user.ID, gameID).
+			First(&userInGame); res.Error != nil {
 			return res.Error
 		}
 		userInGame.Score = value[0]
@@ -444,9 +451,9 @@ func (db *Database) GameOver(gameStatistics map[string][2]uint, gameID uint) (er
  * @return error
  *
  */
-func normalizeLimitAndOrder(lenOfTable uint, limit *uint, offset *uint){
+func normalizeLimitAndOrder(lenOfTable uint, limit *uint, offset *uint) {
 
-	if *offset >= lenOfTable{
+	if *offset >= lenOfTable {
 		*offset = 0
 	}
 	if *limit > lenOfTable - *offset {
@@ -464,16 +471,20 @@ func normalizeLimitAndOrder(lenOfTable uint, limit *uint, offset *uint){
  * @return error
  *
  */
-func (db *Database) GetTop (mode string, limit uint, offset uint) ([]User, error){
+func (db *Database) GetTop(mode string, limit uint, offset uint) ([]User, error) {
 
 	top := []User{}
-	
+
 	if res := db.DBConnect.Order(fmt.Sprintf("%s desc", mode)).Find(&top); res.Error != nil {
 		return nil, res.Error
 	}
 	normalizeLimitAndOrder(uint(len(top)), &limit, &offset)
 
-	if res := db.DBConnect.Order(fmt.Sprintf("%s desc", mode)).Limit(limit).Offset(offset).Find(&top); res.Error != nil {
+	if res := db.DBConnect.
+		Order(fmt.Sprintf("%s desc", mode)).
+		Limit(limit).
+		Offset(offset).
+		Find(&top); res.Error != nil {
 		return nil, res.Error
 	}
 	return top, nil
@@ -488,14 +499,18 @@ func (db *Database) GetTop (mode string, limit uint, offset uint) ([]User, error
  * @return error
  *
  */
-func (db *Database) TopWords(limit uint, offset uint) ([]RusWord, error){
+func (db *Database) TopWords(limit uint, offset uint) ([]RusWord, error) {
 
 	top := []RusWord{}
 	if res := db.DBConnect.Find(&top); res.Error != nil {
 		return nil, res.Error
 	}
 	normalizeLimitAndOrder(uint(len(top)), &limit, &offset)
-	if res := db.DBConnect.Order("popularity DESC").Limit(limit).Offset(offset).Find(&top); res.Error != nil {
+	if res := db.DBConnect.
+		Order("popularity DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&top); res.Error != nil {
 		return nil, res.Error
 	}
 
@@ -512,7 +527,7 @@ func (db *Database) TopWords(limit uint, offset uint) ([]RusWord, error){
  * @return error
  *
  */
-func (db *Database) WordTopUsers(word string, limit uint, offset uint)(map[string]uint, error){
+func (db *Database) WordTopUsers(word string, limit uint, offset uint) (map[string]uint, error) {
 
 	topLexicons := []UsersLexicon{}
 
@@ -526,13 +541,18 @@ func (db *Database) WordTopUsers(word string, limit uint, offset uint)(map[strin
 	}
 	normalizeLimitAndOrder(uint(len(topLexicons)), &limit, &offset)
 
-	if res := db.DBConnect.Where("rus_word_id = ? ", rusWordField.ID).Order("count DESC").Limit(limit).Offset(offset).Find(&topLexicons); res.Error != nil {
+	if res := db.DBConnect.
+		Where("rus_word_id = ? ", rusWordField.ID).
+		Order("count DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&topLexicons); res.Error != nil {
 		return nil, res.Error
 	}
 	topUsers := make(map[string]uint)
 
-	for i := range topLexicons{
-		if res := db.DBConnect.Model(&(topLexicons[i])).Related(&(topLexicons[i]).User); res.Error != nil{
+	for i := range topLexicons {
+		if res := db.DBConnect.Model(&(topLexicons[i])).Related(&(topLexicons[i]).User); res.Error != nil {
 			return nil, res.Error
 		}
 		topUsers[topLexicons[i].User.Name] = topLexicons[i].Count
@@ -549,7 +569,7 @@ func (db *Database) WordTopUsers(word string, limit uint, offset uint)(map[strin
  * @return error
  *
  */
-func (db *Database) GetCurrentGameUsersList(username string) ([]User, error){
+func (db *Database) GetCurrentGameUsersList(username string) ([]User, error) {
 
 	lastGame := UserInGame{}
 
@@ -563,11 +583,14 @@ func (db *Database) GetCurrentGameUsersList(username string) ([]User, error){
 	}
 
 	allCurrentGamePlayersSessions := []UserInGame{}
-	if res := db.DBConnect.Where("game_id = ?", lastGame.GameID).Preload("User").Find(&allCurrentGamePlayersSessions); res.Error != nil {
+	if res := db.DBConnect.
+		Where("game_id = ?", lastGame.GameID).
+		Preload("User").
+		Find(&allCurrentGamePlayersSessions); res.Error != nil {
 		return nil, res.Error
 	}
 	resultUsers := []User{}
-	for i := range allCurrentGamePlayersSessions{
+	for i := range allCurrentGamePlayersSessions {
 		resultUsers = append(resultUsers, allCurrentGamePlayersSessions[i].User)
 	}
 
@@ -575,8 +598,8 @@ func (db *Database) GetCurrentGameUsersList(username string) ([]User, error){
 }
 
 type gameFullStat struct {
-	winner  string
-	Users   []User
+	winner string
+	Users  []User
 }
 
 /**
@@ -587,7 +610,7 @@ type gameFullStat struct {
  * @return error
  *
  */
-func (db *Database) GetUserAllGamesStat(username string) (map[uint]gameFullStat, error){
+func (db *Database) GetUserAllGamesStat(username string) (map[uint]gameFullStat, error) {
 
 	result := make(map[uint]gameFullStat)
 
@@ -597,23 +620,29 @@ func (db *Database) GetUserAllGamesStat(username string) (map[uint]gameFullStat,
 	}
 
 	userGamesList := []UserInGame{}
-	if res := db.DBConnect.Where("user_id = ?", user.ID).Preload("GameSession.Winner").Find(&userGamesList); res.Error != nil {
+	if res := db.DBConnect.
+		Where("user_id = ?", user.ID).
+		Preload("GameSession.Winner").
+		Find(&userGamesList); res.Error != nil {
 		return nil, res.Error
 	}
 
-	for i := range userGamesList{
+	for i := range userGamesList {
 
-		anotherUsersInThisGame:= []UserInGame{}
+		anotherUsersInThisGame := []UserInGame{}
 
-		if res := db.DBConnect.Where("game_id = ?", userGamesList[i].GameID).Preload("User").Find(&anotherUsersInThisGame); res.Error != nil {
+		if res := db.DBConnect.
+			Where("game_id = ?", userGamesList[i].GameID).
+			Preload("User").
+			Find(&anotherUsersInThisGame); res.Error != nil {
 			return nil, res.Error
 		}
 
 		usersList := []User{}
-		for j := range anotherUsersInThisGame{
+		for j := range anotherUsersInThisGame {
 			usersList = append(usersList, anotherUsersInThisGame[j].User)
 		}
-		result[userGamesList[i].GameID] = gameFullStat{winner:userGamesList[i].GameSession.Winner.Name, Users:usersList}
+		result[userGamesList[i].GameID] = gameFullStat{winner: userGamesList[i].GameSession.Winner.Name, Users: usersList}
 
 	}
 	return result, nil
