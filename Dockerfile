@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM golang:1.8
 MAINTAINER Nikita Boyarskikh <N02@yandex.ru>
 
 RUN \
@@ -9,6 +9,7 @@ RUN \
 
 ENV GOPATH /code
 
-RUN go get -u github.com/BaldaGo/balda-go
-RUN cat /code/src/github.com/BaldaGo/balda-go/requirements.txt | xargs go get -u
-RUN go build -o /code/src/github.com/BaldaGo/balda-go/balda-go /code/src/github.com/BaldaGo/balda-go/main.go
+ADD . /code/src/github.com/BaldaGo/balda-go
+WORKDIR /code/src/github.com/BaldaGo/balda-go
+RUN go build -o ./balda-go ./main.go
+RUN ./balda-go
