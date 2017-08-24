@@ -9,8 +9,13 @@ package server
 
 import (
 	// System
+	"bufio"
+	"context"
 	"net"
+	"os"
+	"os/signal"
 	"strconv"
+	"strings"
 	"time"
 
 	// Third-party
@@ -18,14 +23,9 @@ import (
 	// Project
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/dict"
+	"github.com/BaldaGo/balda-go/game"
 	"github.com/BaldaGo/balda-go/logger"
 )
-
-/// Reading channel
-type ReadingChan struct {
-	err     error  ///< Error
-	content []byte ///< Message
-}
 
 /**
  * @class Server
@@ -35,16 +35,17 @@ type ReadingChan struct {
  * which contributes sessions, users, games, scores and other
  */
 type Server struct {
-	host              string        ///< Host where server will run (default 127.0.0.1)
-	port              int           ///< Port where server will run (default 8888)
-	maxSessions       int           ///< Maximum number of running sessions at a time (default 1000)
-	readingBufferSize int           ///< Size of reading buffer in bytes (default 1)
-	WaitTime          time.Duration ///< Time in milliseconds that server wait if users connection was lost (default 100)
-	Timeout           time.Duration ///< Timeout in milliseconds of long operatiobs (default 1000)
-	Pool              *Pool         ///< Pool of goroutines
-	MaxUsernameLength int           ///< Maximum length of user name
-	Sessions          []Session     ///< Array of active sessions
-	Users             map[int]User  ///< Map of SessionID => User
+	host              string         ///< Host where server will run (default 127.0.0.1)
+	port              int            ///< Port where server will run (default 8888)
+	maxSessions       int            ///< Maximum number of running sessions at a time (default 1000)
+	Timeout           time.Duration  ///< Timeout in seconds of waiting user play (default 30)
+	TimeoutForLogin   time.Duration  ///< Timeout in seconds of waiting user login (default 300)
+	Deadline          time.Duration  ///< Deadline for connection (in milliseconds) (default 1000)
+	Pool              Pool           ///< Pool of goroutines
+	MaxUsernameLength int            ///< Maximum length of user name
+	Sessions          []Session      ///< Array of active sessions
+	Users             map[string]int ///< Map of logins in each sessionID
+	Signals           chan os.Signal ///< Channel of system signals like SIGINT and SIGKILL
 }
 
 /**
@@ -54,14 +55,14 @@ type Server struct {
  *
  * Make light and eazy fast initialisation of server directly
  */
-func New(cfg conf.ServerConf) *Server {
-	s := new(Server)
+func New(cfg conf.ServerConf) Server {
+	var s Server
 	s.host = cfg.Host
 	s.port = cfg.Port
-	s.readingBufferSize = cfg.ReadingBufferSize
-	s.WaitTime = cfg.WaitTime
-	s.Timeout = cfg.Timeout
+	s.Deadline = cfg.Deadline * time.Millisecond
+	s.TimeoutForLogin = cfg.TimeoutForLogin * time.Second
 
+	s.Timeout = cfg.Game.Timeout * time.Second
 	s.MaxUsernameLength = cfg.Game.MaxUsernameLength
 
 	logger.Log.Debug("New server created")
@@ -78,11 +79,13 @@ func (s *Server) PreRun(cfg conf.ServerConf) {
 	dict.Init(cfg.Game.AreaSize, "dict/dictionary.txt")
 
 	s.Pool = NewPool(cfg.Concurrency)
-	s.Users = make(map[int]User)
 	s.Sessions = make([]Session, cfg.NumberOfGames)
+	s.Users = make(map[string]int)
+	s.Signals = make(chan os.Signal, 1)
+	signal.Notify(s.Signals, os.Interrupt)
 
 	for i := 0; i < len(s.Sessions); i++ {
-		s.Sessions[i].Game = NewGame()
+		s.Sessions[i].Game = game.NewGame(cfg.Game)
 	}
 
 	s.Pool.Run()
@@ -94,27 +97,58 @@ func (s *Server) PreRun(cfg conf.ServerConf) {
  * @return err Error if critical error occured
  */
 func (s *Server) Run() error {
-	l, err := net.Listen("tcp", net.JoinHostPort(s.host, strconv.Itoa(s.port)))
+	fullNetPath := net.JoinHostPort(s.host, strconv.Itoa(s.port))
+	addr, err := net.ResolveTCPAddr("tcp", fullNetPath)
+	if err != nil {
+		err = logger.Tracef(err, "Can't resolve '%s'", fullNetPath)
+		logger.Log.Critical(err.Error())
+		return err
+	}
+
+	l, err := net.ListenTCP(addr.Network(), addr)
 	if err != nil {
 		err = logger.Trace(err, "Can't establish tcp connection")
 		logger.Log.Critical(err.Error())
 		return err
 	}
+
 	defer l.Close()
 
+	logger.Log.Debug(time.Now().Add(s.Deadline))
+	l.SetDeadline(time.Now().Add(s.Deadline))
 	logger.Log.Infof("Server started listening on: %s:%d", s.host, s.port)
 
+	terminated := false
 	for {
-		conn, err := l.Accept()
-		if err != nil {
-			err = logger.Trace(err, "Failed to accept request. Retrying...")
-			logger.Log.Critical(err.Error())
-			continue
+		select {
+		case sig := <-s.Signals:
+			if sig == os.Interrupt {
+				s.Signals <- sig
+				logger.Log.Debug("Terminated")
+				terminated = true
+			}
+		default:
+			conn, err := l.Accept()
+
+			if err != nil {
+				err = logger.Trace(err, "Listening for new user from is timed out")
+				logger.Log.Debug(err.Error())
+				l.SetDeadline(time.Now().Add(s.Deadline))
+				break
+			}
+
+			logger.Log.Infof("New user connected from %s", conn.RemoteAddr())
+			ctx, cancel := context.WithCancel(context.WithValue(context.WithValue(context.Background(), ConnKey, conn), ServerKey, s))
+			s.Pool.cancels = append(s.Pool.cancels, cancel)
+			s.Pool.Add(work, ctx)
 		}
 
-		logger.Log.Infof("New user connected from %s", conn.RemoteAddr())
-
-		s.Pool.Add([]interface{}{s, conn})
+		if terminated {
+			for _, i := range s.Pool.cancels {
+				i()
+			}
+			break
+		}
 	}
 
 	return nil
@@ -126,81 +160,116 @@ func (s *Server) Run() error {
  * Unlock, free all allocated memory and handlers, save data
  */
 func (s *Server) PostRun() {
-	errors := s.Pool.Stop()
-	for _, e := range errors {
-		e = logger.Trace(e, "While stopping server occured an error in goroutine")
-		logger.Log.Critical(e.Error())
-	}
+	s.Pool.Stop()
 	s = nil
 	logger.Log.Debug("Server destroyed")
 }
 
 /**
  * @brief Goroutine, which called when new telnet connection established
- * @return err Error if it occured
  *
  * Listening connection with new user, login him and start his game
  */
-func (t Task) work() error {
+func work(ctx context.Context) error {
 	var s *Server
 	var c net.Conn
 
-	s = t.args[0].(*Server)
-	c = t.args[1].(net.Conn)
+	s = ctx.Value(ServerKey).(*Server)
+	c = ctx.Value(ConnKey).(net.Conn)
 
-	user, err := s.login(c)
-	if err != nil {
-		logger.Tracef(err, "User from %s can't log in", c.RemoteAddr())
+	users := make(chan User, 1)
+	defer close(users)
+	context := context.WithValue(context.WithValue(context.WithValue(context.Background(), ConnKey, c), ChanKey, users), ServerKey, s)
+	if err := SyncFuncWithTimeout(login, context, s.TimeoutForLogin); err != nil {
+		err = logger.Tracef(err, "User from %s can't log in", c.RemoteAddr())
 		logger.Log.Warning(err.Error())
 		c.Close()
 		return err
 	}
 
-	c.Write([]byte("Hello," + user.login + "!\n"))
+	user := <-users
 
-	// Seems like the length of the buffer needs to be small, otherwise will have to wait for buffer to fill up
-	buffer := make(chan ReadingChan)
+	buffer := make(chan []byte)
+	errors := make(chan net.Conn)
 
-	go asyncReadBytes(c, s.readingBufferSize, buffer)
+	go asyncWriteBytes(c, []byte("Hello,"+user.login+"!\n"), errors)
+	go asyncReadBytes(c, buffer, errors)
+
+	terminated := false
 	for {
 		select {
 		case result := <-buffer:
-			if result.err != nil {
-				result.err = logger.Trace(result.err, "Error in thread")
-				logger.Log.Warning(result.err.Error())
-				c.Close()
-				return result.err
-			} else {
-				logger.Log.Debugf("Readed '%s' from client", result.content)
-				//TODO: Validate and parse request, build and broad cast response
+			logger.Log.Debugf("Readed '%s' from client", result)
 
-				go asyncReadBytes(c, s.readingBufferSize, buffer)
-			}
-		case <-time.After(s.Timeout * time.Millisecond):
+			/*			continue, response := game.Continue(result, user.login)
+						if !continue {
+							s.broadcast(response, user.login, errors, &goroutines)
+							logger.Log.Infof("Game over! %s", response)
+							c.Close()
+							terminated = true
+						} else {
+							s.broadcast(response, user.login, errors, &goroutines)
+						}
+			*/
+			logger.Log.Debug("buffer")
+			go asyncReadBytes(c, buffer, errors)
+		case <-time.After(s.Timeout):
 			logger.Log.Warning("Timeout while reading...")
+			if terminated {
+				c.Close()
+				break
+			}
+		case c := <-errors:
+			logger.Log.Debug("errors")
+			err := c.Close()
+			return err
+		case <-ctx.Done():
+			logger.Log.Debug("Terminated")
+			terminated = true
+		}
+
+		if terminated {
+			logger.Log.Debug("Work finished")
+			return nil
 		}
 	}
+}
 
-	return nil
+/**
+ * @brief Write bytes to user
+ * @param[in] c Connection
+ * @param[in] bytes Array of bytes to write
+ * @param[in] errors Channel with failed connections
+ */
+func asyncWriteBytes(c net.Conn, bytes []byte, errors chan<- net.Conn) {
+	n, err := c.Write(bytes)
+	if err != nil || n != len(bytes) {
+		errors <- c
+		logger.Log.Warningf("Error while writing to connection to %s (%s)", c.RemoteAddr(), err.Error())
+	}
 }
 
 /**
  * @brief Read bytes from user and push it into channel
  * @param[in] c Connection
- * @param[in] readingBufferSize Size of reading buffer
- * @param[in] buffer Channel
+ * @param[in] buffer Output channel with results
+ * @param[in] errors Channel with failed connections
  */
-func asyncReadBytes(c net.Conn, readingBufferSize int, buffer chan<- ReadingChan) {
-	buf := make([]byte, readingBufferSize)
-	n, err := c.Read(buf)
-	if err != nil {
-		err = logger.Trace(err, "Communication error")
-		logger.Log.Warningf(err.Error())
-		buffer <- ReadingChan{err: err}
-		return
+func asyncReadBytes(c net.Conn, buffer chan<- []byte, errors chan<- net.Conn) {
+	io := bufio.NewReader(c)
+	buf, err := io.ReadString('\n')
+	line := strings.Replace(strings.Replace(buf, "\n", "", -1), "\r", "", -1)
+	if err != nil || line == "" {
+		logger.Log.Warningf("Error while reading from connection from %s (%s)", c.RemoteAddr(), err.Error())
+		errors <- c
+	} else {
+		buffer <- []byte(line)
 	}
+}
 
-	if n > 0 {
-		buffer <- ReadingChan{content: buf}
+func (s *Server) broadcast(msg string, login string, errors chan<- net.Conn) {
+	sessionID := s.Users[login]
+	for _, i := range s.Sessions[sessionID].Users {
+		go asyncWriteBytes(i.conn, []byte(msg), errors)
 	}
 }
