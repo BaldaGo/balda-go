@@ -65,6 +65,7 @@ type ServerConf struct {
 type DatabaseConf struct {
 	Dialect 	string
 	User 		string
+	Password	string
 	Host 		string
 	Port 		int
 	Name		string

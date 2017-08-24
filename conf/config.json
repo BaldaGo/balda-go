@@ -16,6 +16,7 @@
         "Database" : {
             "Dialect" : "mysql",
             "User" : "root",
+            "Password": "admin",
             "Host" : "127.0.0.1",
             "Port" : 3306,
             "Name" : "baldadb",

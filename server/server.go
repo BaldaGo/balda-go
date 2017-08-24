@@ -90,8 +90,9 @@ func (s *Server) PreRun(cfg conf.ServerConf) error{
 
 	var err error
 	if s.DB.DBConnect, err = gorm.Open(cfg.Database.Dialect,
-		fmt.Sprintf("%s@(%s:%d)/%s?%s",
+		fmt.Sprintf("%s:%s@(%s:%d)/%s?%s",
 			cfg.Database.User,
+			cfg.Database.Password,
 			cfg.Database.Host,
 			cfg.Database.Port,
 			cfg.Database.Name,

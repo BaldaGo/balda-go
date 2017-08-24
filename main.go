@@ -39,7 +39,9 @@ func main() {
 	logger.Init(config.Logger)
 
 	server := server.New(config.Server)
-	server.PreRun(config.Server)
+	if res := server.PreRun(config.Server); res.Error != nil{
+		panic(res.Error())
+	}
 	defer server.PostRun()
 
 	err = server.Run()
