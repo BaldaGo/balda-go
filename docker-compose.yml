@@ -4,15 +4,18 @@ services:
   balda:
     image: golang:1.8
     working_dir: /code/src/github.com/BaldaGo/balda-go
-    links:
-    - db
-    volumes:
-    - ./:/code/src/github.com/BaldaGo/balda-go
-    build: .
     environment:
     - DEBUG=1
+    build: .
+    command: ./balda-go
+    links:
+    - db
     ports:
     - "8888:8888"
+    volumes:
+    - ./:/code/src/github.com/BaldaGo/balda-go
+    restart: always
+
   db:
     image: mysql
     ports:

@@ -11,5 +11,4 @@ ENV GOPATH /code
 
 ADD . /code/src/github.com/BaldaGo/balda-go
 WORKDIR /code/src/github.com/BaldaGo/balda-go
-RUN go build -o ./balda-go ./main.go
-RUN ./balda-go
+RUN go build
