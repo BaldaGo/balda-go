@@ -27,6 +27,7 @@ import (
  * It has a basic modules structure
  */
 type Config struct {
+	Stage  string     ///< Stage enum(dev, test, prod)
 	Server ServerConf ///< Server configurations
 	Logger LoggerConf ///< Logger configurations
 }
@@ -45,14 +46,13 @@ type LoggerConf struct {
  * @brief Class, provides configuration for Server
  */
 type ServerConf struct {
-	Host              string        ///< Host where server will run (default 127.0.0.1)
-	Port              int           ///< Port where server will run (default 8888)
-	NumberOfGames     int           ///< Maximum number of running sessions at a time (default 1000)
-	ReadingBufferSize int           ///< Size of reading buffer in bytes (default 1)
-	WaitTime          time.Duration ///< Time in milliseconds that server wait if users connection was lost (default 100)
-	Timeout           time.Duration ///< Timeout in milliseconds of long operatiobs (default 1000)
-	Concurrency       int           ///< Number of workers in goroutines pool (default 4000)
-	Game              GameConf      ///< Game configurations
+	Host            string        ///< Host where server will run (default 127.0.0.1)
+	Port            int           ///< Port where server will run (default 8888)
+	NumberOfGames   int           ///< Maximum number of running sessions at a time (default 1000)
+	Concurrency     int           ///< Number of workers in goroutines pool (default 4000)
+	Deadline        time.Duration ///< Deadline for connection (in milliseconds) (default 1000)
+	Game            GameConf      ///< Game configurations
+	TimeoutForLogin time.Duration ///< Timeout for login in seconds (default 120)
 }
 
 /**
@@ -60,9 +60,10 @@ type ServerConf struct {
  * @brief Class, provides configuration for game process
  */
 type GameConf struct {
-	AreaSize           int ///< Length side of the playing area (default 5)
-	NumberUsersPerGame int ///< Maximum number of gaming users at a time (default 4)
-	MaxUsernameLength  int ///< Maximum username length (default 255)
+	Timeout            time.Duration ///< Timeout in seconds of waiting user (default 30)
+	AreaSize           int           ///< Length side of the playing area (default 5)
+	NumberUsersPerGame int           ///< Maximum number of gaming users at a time (default 4)
+	MaxUsernameLength  int           ///< Maximum username length (default 255)
 }
 
 /**
@@ -88,6 +89,10 @@ func New(file string) (*Config, error) {
 
 	if decoder.Decode(config) != nil {
 		return nil, errors.New("Malformed config json file")
+	}
+
+	if config.Stage != "dev" && config.Stage != "test" && config.Stage != "prod" {
+		return nil, errors.New("Wrong value: 'Stage'")
 	}
 
 	return config, nil

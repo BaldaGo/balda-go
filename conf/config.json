@@ -1,13 +1,14 @@
 {
+    "Stage" : "dev",
     "Server" : {
         "Host" : "127.0.0.1",
         "Port" : 8888,
-        "ReadingBufferSize" : 1,
-        "WaitTime" : 100,
-        "Timeout" : 1000,
-        "Concurrency" : 4000,
+        "Concurrency" : 1,
         "NumberOfGames" : 1000,
+        "Deadline" : 1000,
+        "TimeoutForLogin" : 120,
         "Game" : {
+            "Timeout" : 30,
             "MaxUsernameLength" : 255,
             "AreaSize" : 5,
             "NumberUsersPerGame" : 4
