@@ -15,9 +15,9 @@
         },
         "Database" : {
             "Dialect" : "mysql",
-            "User" : "root",
-            "Password": "admin",
-            "Host" : "127.0.0.1",
+            "User" : "balda",
+            "Password": "balda",
+            "Host" : "go",
             "Port" : 3306,
             "Name" : "baldadb",
             "Options" : "charset=utf8&parseTime=True&loc=Local",

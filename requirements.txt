@@ -1,3 +1,2 @@
 github.com/kardianos/govendor
-github.com/BaldaGo/balda-go
 github.com/op/go-logging
