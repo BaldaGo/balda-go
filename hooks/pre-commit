@@ -1,0 +1,4 @@
+#!/bin/bash
+files_modified=`git diff-index --cached --name-only HEAD | grep -P '.*\.go' | grep -v vendor | xargs`
+gofmt -s -w $files_modified
+goimports -w $files_modified
