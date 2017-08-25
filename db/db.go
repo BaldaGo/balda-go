@@ -213,8 +213,7 @@ func LoadDictionary(path string) error {
 		}
 	}
 
-	logger.Log.Info(fmt.Sprintf("Done. %d words uploaded", dictSize))
-	logger.Log.Info("Database is ready for game")
+	logger.Log.Info(fmt.Sprintf("Done. %d words uploaded. Database is ready for game", dictSize))
 
 	return nil
 }
