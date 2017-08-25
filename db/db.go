@@ -40,7 +40,7 @@ import (
  */
 
 var db *gorm.DB // Database main variable
-var dictSize uint = 0
+var dictSize uint
 
 
 /**
