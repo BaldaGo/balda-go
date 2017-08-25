@@ -29,9 +29,10 @@ import (
 	"github.com/jinzhu/gorm"
 
 	// Project
+	"strings"
+
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/logger"
-	"strings"
 )
 
 /**
@@ -42,7 +43,6 @@ import (
 
 var db *gorm.DB // Database main variable
 var dictSize uint
-
 
 /**
  *
@@ -57,7 +57,7 @@ type User struct {
 	gorm.Model
 
 	Name       string `gorm:"unique"`
-	Wins       uint `gorm:"default:0"`
+	Wins       uint   `gorm:"default:0"`
 	Password   uint32
 	IpAddr     string
 	Games      uint `gorm:"default:0"`
@@ -76,7 +76,7 @@ type UserConnection struct {
 
 	UserID uint
 	IpAddr string
-	User User `gorm:"ForeignKey:UserID"`
+	User   User `gorm:"ForeignKey:UserID"`
 }
 
 /**
@@ -104,7 +104,7 @@ type GameSession struct {
 	gorm.Model
 
 	WinnerID uint
-	Winner User `gorm:"ForeignKey:WinnerID"`
+	Winner   User `gorm:"ForeignKey:WinnerID"`
 }
 
 /**
@@ -120,9 +120,9 @@ type UsersLexicon struct {
 
 	UserID    uint
 	RusWordID uint
-	Count     uint `gorm:"default:1"`
-	User    User    `gorm:"ForeignKey:UserID"`
-	RusWord RusWord `gorm:"ForeignKey:RusWordID"`
+	Count     uint    `gorm:"default:1"`
+	User      User    `gorm:"ForeignKey:UserID"`
+	RusWord   RusWord `gorm:"ForeignKey:RusWordID"`
 }
 
 /**
@@ -135,14 +135,12 @@ type UsersLexicon struct {
 type UserInGame struct {
 	gorm.Model
 
-	UserID uint
-	Score  uint
-	GameID uint
-	User        User `gorm:"ForeignKey:UserID"`
+	UserID      uint
+	Score       uint
+	GameID      uint
+	User        User        `gorm:"ForeignKey:UserID"`
 	GameSession GameSession `gorm:"ForeignKey:GameID"`
 }
-
-
 
 /**
  *
@@ -152,13 +150,13 @@ type UserInGame struct {
  * @return error
  *
  */
-func Init(cfg conf.DatabaseConf) (error) {
+func Init(cfg conf.DatabaseConf) error {
 
 	var err error
 	var parsedOptions string
 	options := []string{}
 
-	for key, value := range cfg.Options{
+	for key, value := range cfg.Options {
 		options = append(options, fmt.Sprintf("%s=%s", key, value))
 	}
 
@@ -175,18 +173,17 @@ func Init(cfg conf.DatabaseConf) (error) {
 		return err
 	}
 
-	if res := db.Set("gorm:insert_options", fmt.Sprintf("ENGINE=%s",cfg.Engine)).
+	if res := db.Set("gorm:insert_options", fmt.Sprintf("ENGINE=%s", cfg.Engine)).
 		AutoMigrate(&User{},
-		&RusWord{},
-		&GameSession{},
-		&UsersLexicon{},
-		&UserInGame{},
-		&UserConnection{}); res != nil{
+			&RusWord{},
+			&GameSession{},
+			&UsersLexicon{},
+			&UserInGame{},
+			&UserConnection{}); res != nil {
 		return res.Error
 	}
 	return nil
 }
-
 
 /**
  *
@@ -210,9 +207,9 @@ func LoadDictionary(path string) error {
 	logger.Log.Info("Loading dictionary. Please wait... (approximately 60 seconds)")
 
 	for scanner.Scan() {
-		dictSize ++
+		dictSize++
 		var word = RusWord{Word: scanner.Text()}
-		if res := db.Create(&word); res.Error != nil{
+		if res := db.Create(&word); res.Error != nil {
 			return res.Error
 		}
 	}
@@ -487,7 +484,7 @@ func normalizeLimitAndOrder(lenOfTable uint, limit *uint, offset *uint) {
 	if *offset >= lenOfTable {
 		*offset = 0
 	}
-	if *limit > lenOfTable - *offset {
+	if *limit > lenOfTable-*offset {
 		*limit = (lenOfTable - *offset) % *limit
 	}
 }
