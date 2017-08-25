@@ -10,8 +10,8 @@ package game
 import (
 	// System
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 
 	// Third-party
 
@@ -124,7 +124,7 @@ func (area Square) StrPrintArea() string {
 		str = strings.Join([]string{str, "\n", strconv.Itoa(i), "["}, "")
 		for j := range area.matrix[i] {
 			str = strings.Join([]string{str, string(area.matrix[i][j])}, "")
-			if (j != len(area.matrix[i]) - 1) {
+			if j != len(area.matrix[i])-1 {
 				str = strings.Join([]string{str, " "}, "")
 			}
 		}
@@ -248,10 +248,10 @@ func (area *Square) CheckWord(x int, y int, symbol rune, word []rune) bool {
 func (area *Square) IsFull() bool {
 	for i := range area.matrix {
 		for j := range area.matrix[i] {
-			if (area.matrix[i][j] == '-') {
+			if area.matrix[i][j] == '-' {
 				return false
 			}
-		} 
+		}
 	}
 	return true
 }

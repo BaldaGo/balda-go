@@ -17,10 +17,10 @@ import (
 
 	// Project
 	"github.com/BaldaGo/balda-go/conf"
+	"github.com/BaldaGo/balda-go/db"
 	"github.com/BaldaGo/balda-go/flags"
 	"github.com/BaldaGo/balda-go/logger"
 	"github.com/BaldaGo/balda-go/server"
-	"github.com/BaldaGo/balda-go/db"
 )
 
 /**
@@ -41,10 +41,10 @@ func main() {
 
 	server := server.New(config.Server)
 
-	if err := db.Init(config.Database); err != nil{
+	if err := db.Init(config.Database); err != nil {
 		panic(err)
 	}
-	if err := db.LoadDictionary(config.Server.DictPath); err != nil{
+	if err := db.LoadDictionary(config.Server.DictPath); err != nil {
 		panic(err)
 	}
 

@@ -27,7 +27,6 @@ import (
 	"github.com/BaldaGo/balda-go/dict"
 	"github.com/BaldaGo/balda-go/game"
 	"github.com/BaldaGo/balda-go/logger"
-	"github.com/BaldaGo/balda-go/game"
 )
 
 /**
@@ -87,7 +86,6 @@ func (s *Server) PreRun(cfg conf.ServerConf) error {
 	s.Users = make(map[string]int)
 	s.Signals = make(chan os.Signal, 1)
 	signal.Notify(s.Signals, os.Interrupt)
-
 
 	for i := 0; i < len(s.Sessions); i++ {
 		s.Sessions[i].Game = game.NewGame(cfg.Game)
