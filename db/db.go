@@ -22,6 +22,7 @@ import (
 	"bufio"
 	"fmt"
 	"hash/fnv"
+	"strings"
 	"os"
 
 	// Third-party
@@ -29,8 +30,6 @@ import (
 	"github.com/jinzhu/gorm"
 
 	// Project
-	"strings"
-
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/logger"
 )
@@ -175,11 +174,11 @@ func Init(cfg conf.DatabaseConf) error {
 
 	if res := db.Set("gorm:insert_options", fmt.Sprintf("ENGINE=%s", cfg.Engine)).
 		AutoMigrate(&User{},
-			&RusWord{},
-			&GameSession{},
-			&UsersLexicon{},
-			&UserInGame{},
-			&UserConnection{}); res != nil {
+		&RusWord{},
+		&GameSession{},
+		&UsersLexicon{},
+		&UserInGame{},
+		&UserConnection{}); res != nil {
 		return res.Error
 	}
 	return nil
@@ -268,7 +267,7 @@ func CheckUser(username string, password string) (bool, error) {
 
 	user := &User{}
 	if res := db.
-		Where("name = ? and password = ?", username, hash(password)).
+	Where("name = ? and password = ?", username, hash(password)).
 		Find(&user); res.Error != nil {
 		return false, res.Error
 	}
@@ -358,7 +357,7 @@ func RemoveUserFromSession(username string) (*UserInGame, error) {
 	// TODO: try to change line 312 to "...user.ID).First(&session).Order("ID DESC").Delete... "
 	session := UserInGame{}
 	if res := db.
-		Where("user_id = ?", user.ID).
+	Where("user_id = ?", user.ID).
 		Find(&session).
 		Order("ID").
 		Delete(&session); res.Error != nil {
@@ -393,7 +392,7 @@ func AddWord(username string, word string) (*UsersLexicon, error) {
 
 	userLexicon := UsersLexicon{}
 	if res := db.
-		Where("user_id = ? and rus_word_id = ?", user.ID, rusWord.ID).
+	Where("user_id = ? and rus_word_id = ?", user.ID, rusWord.ID).
 		First(&userLexicon); res.Error != nil {
 
 		userLexicon = UsersLexicon{UserID: user.ID, RusWordID: rusWord.ID}
@@ -454,7 +453,7 @@ func GameOver(gameStatistics map[string][2]uint, gameID uint) error {
 
 		userInGame := UserInGame{}
 		if res := db.
-			Where("user_id = ? and game_id = ?", user.ID, gameID).
+		Where("user_id = ? and game_id = ?", user.ID, gameID).
 			First(&userInGame); res.Error != nil {
 			return res.Error
 		}
@@ -484,7 +483,7 @@ func normalizeLimitAndOrder(lenOfTable uint, limit *uint, offset *uint) {
 	if *offset >= lenOfTable {
 		*offset = 0
 	}
-	if *limit > lenOfTable-*offset {
+	if *limit > lenOfTable - *offset {
 		*limit = (lenOfTable - *offset) % *limit
 	}
 }
@@ -509,7 +508,7 @@ func GetTop(mode string, limit uint, offset uint) ([]User, error) {
 	normalizeLimitAndOrder(uint(len(top)), &limit, &offset)
 
 	if res := db.
-		Order(fmt.Sprintf("%s desc", mode)).
+	Order(fmt.Sprintf("%s desc", mode)).
 		Limit(limit).
 		Offset(offset).
 		Find(&top); res.Error != nil {
@@ -533,7 +532,7 @@ func TopWords(limit uint, offset uint) ([]RusWord, error) {
 
 	normalizeLimitAndOrder(dictSize, &limit, &offset)
 	if res := db.
-		Order("popularity DESC").
+	Order("popularity DESC").
 		Limit(limit).
 		Offset(offset).
 		Find(&top); res.Error != nil {
@@ -568,7 +567,7 @@ func WordTopUsers(word string, limit uint, offset uint) (map[string]uint, error)
 	normalizeLimitAndOrder(uint(len(topLexicons)), &limit, &offset)
 
 	if res := db.
-		Where("rus_word_id = ? ", rusWordField.ID).
+	Where("rus_word_id = ? ", rusWordField.ID).
 		Order("count DESC").
 		Limit(limit).
 		Offset(offset).
@@ -610,7 +609,7 @@ func GetCurrentGameUsersList(username string) ([]User, error) {
 
 	allCurrentGamePlayersSessions := []UserInGame{}
 	if res := db.
-		Where("game_id = ?", lastGame.GameID).
+	Where("game_id = ?", lastGame.GameID).
 		Preload("User").
 		Find(&allCurrentGamePlayersSessions); res.Error != nil {
 		return nil, res.Error
@@ -649,7 +648,7 @@ func GetUserAllGamesStat(username string, limit uint, offset uint) (map[uint]gam
 
 	userGamesList := []UserInGame{}
 	if res := db.
-		Where("user_id = ?", user.ID).
+	Where("user_id = ?", user.ID).
 		Preload("GameSession.Winner").
 		Limit(limit).
 		Offset(offset).
@@ -662,7 +661,7 @@ func GetUserAllGamesStat(username string, limit uint, offset uint) (map[uint]gam
 		anotherUsersInThisGame := []UserInGame{}
 
 		if res := db.
-			Where("game_id = ?", userGamesList[i].GameID).
+		Where("game_id = ?", userGamesList[i].GameID).
 			Preload("User").
 			Find(&anotherUsersInThisGame); res.Error != nil {
 			return nil, res.Error
