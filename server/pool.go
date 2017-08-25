@@ -8,27 +8,35 @@ package server
 
 import (
 	// System
+	"context"
 	"sync"
+	"time"
 	// Third-party
 	// Project
+	"github.com/BaldaGo/balda-go/logger"
 )
 
 /// Task intreface (see @class Type)
-type TaskI interface {
-	work() error ///< Goroutine
-}
+type Func func(context.Context) error ///< Goroutine
+type key int
+
+const (
+	ConnKey key = 0 + iota
+	ServerKey
+	ChanKey
+)
 
 /**
  * @class Task
  * @brief Asyncronic task which works in goroutine
  *
- * It must have work method which start in goroutine
+ * It must have Work method which start in goroutine
  * with arguments args and store it's result into result field
  */
 type Task struct {
-	args   []interface{}  ///< Argumets to call goroutine
-	wg     sync.WaitGroup ///< Waight group
-	result error          ///< Error if it occured
+	work   Func            ///< Callback
+	ctx    context.Context ///< Context of calling goroutine
+	result error           ///< Error if it occured
 }
 
 /**
@@ -39,10 +47,25 @@ type Task struct {
  * when task is done, goroutine send result into resultsChan
  */
 type Pool struct {
-	concurrency int            ///< Number of goroutines in pool
-	tasksChan   chan *Task     ///< Channel with tasks
-	resultsChan chan *Task     ///< Channel with results
-	wg          sync.WaitGroup ///< Waight group
+	concurrency int                  ///< Number of goroutines in pool
+	tasksChan   chan *Task           ///< Channel with tasks
+	resultsChan chan error           ///< Channel with results
+	wg          sync.WaitGroup       ///< Waight group
+	cancels     []context.CancelFunc ///< Array of functions stops working
+}
+
+func SyncFuncWithTimeout(f Func, ctx context.Context, timeout time.Duration) error {
+	ch := make(chan error)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	go func(chan error) { ch <- f(ctx) }(ch)
+	select {
+	case err := <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	return nil
 }
 
 /**
@@ -58,12 +81,15 @@ func (p *Pool) Size() int {
  * @param[in] concurrency Number of goroutines in pool
  * @return Pointer to created Pool
  */
-func NewPool(concurrency int) *Pool {
-	return &Pool{
+func NewPool(concurrency int) Pool {
+	pool := Pool{
 		concurrency: concurrency,
-		tasksChan:   make(chan *Task),
-		resultsChan: make(chan *Task),
+		tasksChan:   make(chan *Task, concurrency),
+		resultsChan: make(chan error, concurrency),
+		cancels:     make([]context.CancelFunc, 0, concurrency),
 	}
+
+	return pool
 }
 
 /**
@@ -75,6 +101,7 @@ func (p *Pool) Run() {
 	for i := 0; i < p.concurrency; i++ {
 		p.wg.Add(1)
 		go p.runWorker()
+		go p.collectResultsAndLog()
 	}
 }
 
@@ -84,18 +111,13 @@ func (p *Pool) Run() {
  *
  * It close tasksChan and wait while all goroutines finished
  */
-func (p *Pool) Stop() []error {
+func (p *Pool) Stop() {
 	close(p.tasksChan)
-	close(p.resultsChan)
-	p.wg.Wait()
-
-	var errs []error
-	for res := range p.resultsChan {
-		if res.result != nil {
-			errs = append(errs, res.result)
-		}
+	for _, i := range p.cancels {
+		i()
 	}
-	return errs
+	p.wg.Wait()
+	close(p.resultsChan)
 }
 
 /**
@@ -103,26 +125,29 @@ func (p *Pool) Stop() []error {
  * @param[in] args Arguments to call goroutine
  * @return t Added task
  */
-func (p *Pool) Add(args []interface{}) TaskI {
-	t := Task{
-		args: args,
-		wg:   sync.WaitGroup{},
+func (p *Pool) Add(work Func, ctx context.Context) {
+	t := &Task{
+		work: work,
+		ctx:  ctx,
 	}
 
-	t.wg.Add(1)
-	p.tasksChan <- &t
+	p.tasksChan <- t
+}
 
-	return t
+func (p *Pool) collectResultsAndLog() {
+	for err := range p.resultsChan {
+		if err != nil {
+			logger.Log.Critical("Work failed: ", err.Error())
+		}
+	}
 }
 
 /**
  * @brief Start worker
  */
 func (p *Pool) runWorker() {
+	defer p.wg.Done()
 	for t := range p.tasksChan {
-		t.result = t.work()
-		p.resultsChan <- t
-		t.wg.Done()
+		p.resultsChan <- t.work(t.ctx)
 	}
-	p.wg.Done()
 }

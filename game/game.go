@@ -6,11 +6,16 @@
  */
 package game
 
-import(
+import (
+	// System
 	"errors"
 	"strconv"
-	"unicode/utf8"
 	"strings"
+	"unicode/utf8"
+
+	// Third-party
+
+	// Project
 	"github.com/BaldaGo/balda-go/conf"
 )
 
@@ -19,25 +24,25 @@ import(
  * @brief Class, provide information about concrete game
  */
 type Game struct {
-	square *Square ///< Gaming area
-	funcMap map[string]interface{}
-	users []string
-	score map[string]int
-	step int
-	onStart bool
-	skipped int
-	putting Put
-	onPut bool
-	AreaSize int
+	square          Square ///< Gaming area
+	funcMap         map[string]interface{}
+	users           []string
+	score           map[string]int
+	step            int
+	onStart         bool
+	skipped         int
+	putting         Put
+	onPut           bool
+	AreaSize        int
 	MaxUsersPerGame int
 }
 
 type Put struct {
-	state string
-	x int
-	y int
-	sym rune
-	word string
+	state   string
+	x       int
+	y       int
+	sym     rune
+	word    string
 	funcMap map[string]interface{}
 }
 
@@ -45,8 +50,8 @@ type Put struct {
  * @brief Create a new game
  * @return game Pointer to the created Game object
  */
-func NewGame(cfg conf.GameConf) *Game {
-	g := &Game{square: NewSquare(cfg.AreaSize)}
+func NewGame(cfg conf.GameConf) Game {
+	g := Game{square: NewSquare(cfg.AreaSize)}
 	g.AreaSize = cfg.AreaSize
 	g.MaxUsersPerGame = cfg.NumberUsersPerGame
 	g.funcMap = make(map[string]interface{})
@@ -60,43 +65,43 @@ func NewGame(cfg conf.GameConf) *Game {
 	g.step = 0
 	g.onStart = false
 	g.onPut = false
-	
+
 	g.putting.funcMap = make(map[string]interface{})
 	g.putting.funcMap["coordX"] = g.coordX
 	g.putting.funcMap["coordY"] = g.coordY
 	g.putting.funcMap["letter"] = g.letter
 	g.putting.funcMap["word"] = g.word
-	
+
 	return g
 }
 
 func (game *Game) Continue(str string, user string) (bool, string) {
-	if (!game.onStart) {
+	if !game.onStart {
 		return true, "Game didn't start"
 	}
-	if (str == "area" || str == "words" || str == "step" || str == "score") {
-		return true, game.funcMap[str].(func()(string))()
+	if str == "area" || str == "words" || str == "step" || str == "score" {
+		return true, game.funcMap[str].(func() string)()
 	}
-	if (game.step >= len(game.users)) {
+	if game.step >= len(game.users) {
 		game.step = game.step % len(game.users)
 	}
-	if (user != game.users[game.step]) {
+	if user != game.users[game.step] {
 		return true, "Not your step is now or not correct command."
 	}
-	if (str == "skip") {
-		return game.funcMap[str].(func()(bool, string))()
+	if str == "skip" {
+		return game.funcMap[str].(func() (bool, string))()
 	}
-	if (str == "put") {
-		return true, game.funcMap[str].(func()(string))()
+	if str == "put" {
+		return true, game.funcMap[str].(func() string)()
 	}
-	if (game.onPut) {
-		return game.putting.funcMap[game.putting.state].(func(string)(bool, string))(str)
+	if game.onPut {
+		return game.putting.funcMap[game.putting.state].(func(string) (bool, string))(str)
 	}
 	return true, "Don't understand you."
 }
 
 func (game *Game) AddUser(login string) error {
-	if (game.onStart || len(game.users) >= game.MaxUsersPerGame) {
+	if game.onStart || len(game.users) >= game.MaxUsersPerGame {
 		return errors.New("Can't add user")
 	}
 	game.users = append(game.users, login)
@@ -122,7 +127,7 @@ func (game *Game) printUsedWords() string {
 }
 
 func (game *Game) whoStep() string {
-	if (game.step < len(game.users)) {
+	if game.step < len(game.users) {
 		return game.users[game.step]
 	}
 	return ""
@@ -130,9 +135,9 @@ func (game *Game) whoStep() string {
 
 func (game *Game) showScore() string {
 	str := ""
-//fmt.Println("IN shoeScore")
+	//fmt.Println("IN shoeScore")
 	for us, sc := range game.score {
-//fmt.Println("iterating")
+		//fmt.Println("iterating")
 		str = strings.Join([]string{str, us, " : ", strconv.Itoa(sc), "\n"}, "")
 	}
 	str = strings.TrimSuffix(str, "\n")
@@ -141,18 +146,18 @@ func (game *Game) showScore() string {
 
 func (game *Game) skip() (bool, string) {
 	game.skipped++
-	if (game.skipped == len(game.users)) {
+	if game.skipped == len(game.users) {
 		game.FinishGame("")
 		return false, "Game over. No winner. All users skipped."
 	}
 	game.step++
-	if (game.step == len(game.users)) {
+	if game.step == len(game.users) {
 		game.step = 0
 	}
 	return true, "You skipped"
 }
 
-func (game *Game) put() (string) {
+func (game *Game) put() string {
 	game.onPut = true
 	game.putting.state = "coordX"
 	return "Please, enter X coordinate"
@@ -160,7 +165,7 @@ func (game *Game) put() (string) {
 
 func (game *Game) coordX(str string) (bool, string) {
 	i, err := strconv.Atoi(str)
-	if (err != nil || i < 0 || i >= game.AreaSize) {
+	if err != nil || i < 0 || i >= game.AreaSize {
 		return true, "Invalid. Try again."
 	}
 	game.putting.x = i
@@ -170,7 +175,7 @@ func (game *Game) coordX(str string) (bool, string) {
 
 func (game *Game) coordY(str string) (bool, string) {
 	i, err := strconv.Atoi(str)
-	if (err != nil || i < 0 || i >= game.AreaSize) {
+	if err != nil || i < 0 || i >= game.AreaSize {
 		return true, "Invalid. Try again."
 	}
 	game.putting.y = i
@@ -179,7 +184,7 @@ func (game *Game) coordY(str string) (bool, string) {
 }
 
 func (game *Game) letter(str string) (bool, string) {
-	if (utf8.RuneCountInString(str) != 1) {
+	if utf8.RuneCountInString(str) != 1 {
 		return true, "Invalid. Try again."
 	}
 	game.putting.sym = []rune(str)[0]
@@ -191,9 +196,9 @@ func (game *Game) word(str string) (bool, string) {
 	game.putting.word = str
 	game.onPut = false
 	ok := game.square.CheckWord(game.putting.y, game.putting.x, game.putting.sym, []rune(game.putting.word))
-	if (ok) {
+	if ok {
 		game.step++
-		if (game.step == len(game.users)) {
+		if game.step == len(game.users) {
 			game.step = 0
 		}
 		sc := utf8.RuneCountInString(game.putting.word)
@@ -202,11 +207,11 @@ func (game *Game) word(str string) (bool, string) {
 			winner := ""
 			hs := 0
 			for us, sc := range game.score {
-				if (sc > hs) {
+				if sc > hs {
 					hs = sc
 					winner = us
 				}
-				if (sc == hs) {
+				if sc == hs {
 					winner = ""
 				}
 			}
