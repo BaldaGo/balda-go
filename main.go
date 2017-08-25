@@ -20,6 +20,7 @@ import (
 	"github.com/BaldaGo/balda-go/flags"
 	"github.com/BaldaGo/balda-go/logger"
 	"github.com/BaldaGo/balda-go/server"
+	"github.com/BaldaGo/balda-go/db"
 )
 
 /**
@@ -39,7 +40,18 @@ func main() {
 	logger.Init(config.Logger)
 
 	server := server.New(config.Server)
-	server.PreRun(config.Server, config.Server.Game)
+
+	if err := db.Init(config.Database); err != nil{
+		panic(err)
+	}
+	if err := db.LoadDictionary(config.Server.DictPath); err != nil{
+		panic(err)
+	}
+
+	if err = server.PreRun(config.Server); err != nil {
+		panic(err)
+	}
+
 	defer server.PostRun()
 
 	err = server.Run()

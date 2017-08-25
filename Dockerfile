@@ -7,8 +7,10 @@ RUN \
     git \
     golang-go
 
-ENV GOPATH /code
 
-RUN go get -u github.com/BaldaGo/balda-go
-RUN cat /code/src/github.com/BaldaGo/balda-go/requirements.txt | xargs go get -u
-RUN go build -o /code/src/github.com/BaldaGo/balda-go/balda-go /code/src/github.com/BaldaGo/balda-go/main.go
+ENV GOPATH /code
+ADD . /code/src/github.com/BaldaGo/balda-go
+WORKDIR /code/src/github.com/BaldaGo/balda-go
+
+RUN cat requirements.txt | xargs go get -u
+RUN go build

@@ -14,8 +14,10 @@ import (
 	"time"
 
 	// Third-party
+	_ "github.com/go-sql-driver/mysql"
 
 	// Project
+
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/dict"
 	"github.com/BaldaGo/balda-go/logger"
@@ -75,19 +77,22 @@ func New(cfg conf.ServerConf) *Server {
  *
  * Create area and dict, fill other heavy game fields of server
  */
-func (s *Server) PreRun(cfg conf.ServerConf, cfgGame conf.GameConf) {
-	dict.Init(cfg.Game.AreaSize, "dict/dictionary.txt")
+
+func (s *Server) PreRun(cfg conf.ServerConf) error {
+	dict.Init(cfg.Game.AreaSize, cfg.DictPath)
 
 	s.Pool = NewPool(cfg.Concurrency)
 	s.Users = make(map[int]User)
 	s.Sessions = make([]Session, cfg.NumberOfGames)
 
+
 	for i := 0; i < len(s.Sessions); i++ {
-		s.Sessions[i].Game = game.NewGame(cfgGame)
+		s.Sessions[i].Game = game.NewGame(cfg.Game)
 	}
 
 	s.Pool.Run()
 	logger.Log.Debugf("Server is configurated with next options: %+v\n", cfg)
+	return nil
 }
 
 /**

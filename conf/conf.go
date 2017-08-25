@@ -29,6 +29,7 @@ import (
 type Config struct {
 	Server ServerConf ///< Server configurations
 	Logger LoggerConf ///< Logger configurations
+	Database DatabaseConf ///< Database configurations
 }
 
 /**
@@ -53,6 +54,22 @@ type ServerConf struct {
 	Timeout           time.Duration ///< Timeout in milliseconds of long operatiobs (default 1000)
 	Concurrency       int           ///< Number of workers in goroutines pool (default 4000)
 	Game              GameConf      ///< Game configurations
+	DictPath 		  string		///< Russian language Dictionary path
+}
+
+/**
+ * @class DatabaseConf
+ * @brief Class, provides configuration for db connection
+ */
+type DatabaseConf struct {
+	Dialect 	string
+	User 		string
+	Password	string
+	Host 		string
+	Port 		int
+	Name		string
+	Engine 		string
+	Options 	map[string]string
 }
 
 /**
