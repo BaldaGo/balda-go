@@ -21,6 +21,7 @@ import (
 
 	// Project
 	"github.com/BaldaGo/balda-go/logger"
+	"github.com/BaldaGo/balda-go/game"
 )
 
 var (
@@ -45,7 +46,7 @@ type User struct {
  */
 type Session struct {
 	users []User ///< Array of users in this session
-	Game  *Game  ///< Game object
+	Game  *game.Game  ///< Game object
 }
 
 /**

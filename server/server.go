@@ -21,6 +21,7 @@ import (
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/dict"
 	"github.com/BaldaGo/balda-go/logger"
+	"github.com/BaldaGo/balda-go/game"
 )
 
 /// Reading channel
@@ -76,6 +77,7 @@ func New(cfg conf.ServerConf) *Server {
  *
  * Create area and dict, fill other heavy game fields of server
  */
+
 func (s *Server) PreRun(cfg conf.ServerConf) error {
 	dict.Init(cfg.Game.AreaSize, cfg.DictPath)
 
@@ -85,7 +87,7 @@ func (s *Server) PreRun(cfg conf.ServerConf) error {
 
 
 	for i := 0; i < len(s.Sessions); i++ {
-		s.Sessions[i].Game = NewGame()
+		s.Sessions[i].Game = game.NewGame(cfgGame)
 	}
 
 	s.Pool.Run()
