@@ -85,7 +85,7 @@ func (s *Server) PreRun(cfg conf.ServerConf) error {
 
 
 	for i := 0; i < len(s.Sessions); i++ {
-		s.Sessions[i].Game = NewGame()
+		s.Sessions[i].Game = NewGame(cfg.Game)
 	}
 
 	s.Pool.Run()
