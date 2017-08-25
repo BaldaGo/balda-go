@@ -29,7 +29,7 @@ import (
 type Config struct {
 	Server ServerConf ///< Server configurations
 	Logger LoggerConf ///< Logger configurations
-	Database DatabaseConf
+	Database DatabaseConf ///< Database configurations
 }
 
 /**
@@ -54,7 +54,6 @@ type ServerConf struct {
 	Timeout           time.Duration ///< Timeout in milliseconds of long operatiobs (default 1000)
 	Concurrency       int           ///< Number of workers in goroutines pool (default 4000)
 	Game              GameConf      ///< Game configurations
-	Database		  DatabaseConf  ///< Database configurations
 	DictPath 		  string		///< Russian language Dictionary path
 }
 
@@ -69,8 +68,7 @@ type DatabaseConf struct {
 	Host 		string
 	Port 		int
 	Name		string
-	Options 	string
-	DictSize	uint
+	Options 	map[string]string
 }
 
 /**

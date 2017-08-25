@@ -15,15 +15,12 @@ import (
 
 	// Third-party
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/jinzhu/gorm"
 
 	// Project
-	"fmt"
 
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/dict"
 	"github.com/BaldaGo/balda-go/logger"
-	"github.com/BaldaGo/balda-go/server/db"
 )
 
 /// Reading channel
@@ -50,7 +47,6 @@ type Server struct {
 	MaxUsernameLength int           ///< Maximum length of user name
 	Sessions          []Session     ///< Array of active sessions
 	Users             map[int]User  ///< Map of SessionID => User
-	DB                db.Database
 }
 
 /**
@@ -87,21 +83,6 @@ func (s *Server) PreRun(cfg conf.ServerConf) error {
 	s.Users = make(map[int]User)
 	s.Sessions = make([]Session, cfg.NumberOfGames)
 
-	var err error
-	if s.DB.DBConnect, err = gorm.Open(cfg.Database.Dialect,
-		fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?%s",
-			cfg.Database.User,
-			cfg.Database.Password,
-			cfg.Database.Host,
-			cfg.Database.Port,
-			cfg.Database.Name,
-			cfg.Database.Options)); err != nil {
-
-		return err
-	}
-
-	s.DB.LoadMigrations()
-	s.DB.LoadDictionary(cfg.DictPath)
 
 	for i := 0; i < len(s.Sessions); i++ {
 		s.Sessions[i].Game = NewGame()

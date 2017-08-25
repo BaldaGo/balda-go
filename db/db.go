@@ -29,6 +29,8 @@ import (
 	"github.com/jinzhu/gorm"
 
 	// Project
+	"github.com/BaldaGo/balda-go/conf"
+	"github.com/BaldaGo/balda-go/logger"
 )
 
 /**
@@ -36,9 +38,10 @@ import (
  * @class Database
  * @brief db object
  */
-type Database struct {
-	DBConnect *gorm.DB
-}
+
+var db *gorm.DB // Database main variable
+var dictSize uint = 0
+
 
 /**
  *
@@ -56,8 +59,8 @@ type User struct {
 	Wins       uint `gorm:"default:0"`
 	Password   uint32
 	IpAddr     string
-	Games      uint
-	Scores     uint
+	Games      uint `gorm:"default:0"`
+	Scores     uint `gorm:"default:0"`
 	WordsCount uint `gorm:"default:0"`
 }
 
@@ -68,9 +71,10 @@ type User struct {
  *
  */
 type UserConnection struct {
+	gorm.Model
+
 	UserID uint
 	IpAddr string
-
 	User User `gorm:"ForeignKey:UserID"`
 }
 
@@ -83,6 +87,7 @@ type UserConnection struct {
  */
 type RusWord struct {
 	gorm.Model
+
 	Word       string
 	Popularity uint `gorm:"default:0"`
 }
@@ -96,8 +101,8 @@ type RusWord struct {
  */
 type GameSession struct {
 	gorm.Model
-	WinnerID uint
 
+	WinnerID uint
 	Winner User `gorm:"ForeignKey:WinnerID"`
 }
 
@@ -111,10 +116,10 @@ type GameSession struct {
  */
 type UsersLexicon struct {
 	gorm.Model
+
 	UserID    uint
 	RusWordID uint
 	Count     uint `gorm:"default:1"`
-
 	User    User    `gorm:"ForeignKey:UserID"`
 	RusWord RusWord `gorm:"ForeignKey:RusWordID"`
 }
@@ -128,30 +133,55 @@ type UsersLexicon struct {
  */
 type UserInGame struct {
 	gorm.Model
+
 	UserID uint
 	Score  uint
 	GameID uint
-
 	User        User `gorm:"ForeignKey:UserID"`
 	GameSession GameSession `gorm:"ForeignKey:GameID"`
 }
 
+
+
 /**
  *
- * @brief Create or update tables from structs if they are not exist already.
+ * @brief Connecting to db.
+ * Create or update tables from structs if they are not exist already.ew
+ * @param[in] Database config
+ * @return error
  *
- * Also set the InnoDB engine.
  */
-func (db *Database) LoadMigrations() {
+func ConnectAndMigrate(cfg conf.DatabaseConf) (error) {
 
-	db.DBConnect.Set("gorm:insert_options", "ENGINE=InnoDB").
+	var err error
+	var parsedOptions string
+
+	for key, value := range cfg.Options{
+		parsedOptions += fmt.Sprintf("%s=%s&", key, value)
+	}
+	if db, err = gorm.Open(cfg.Dialect,
+		fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?%s",
+			cfg.User,
+			cfg.Password,
+			cfg.Host,
+			cfg.Port,
+			cfg.Name,
+			parsedOptions[:len(parsedOptions)-1])); err != nil {
+		return err
+	}
+
+	if res := db.Set("gorm:insert_options", "ENGINE=InnoDB").
 		AutoMigrate(&User{},
 		&RusWord{},
 		&GameSession{},
 		&UsersLexicon{},
 		&UserInGame{},
-		&UserConnection{})
+		&UserConnection{}); res != nil{
+		return res.Error
+	}
+	return nil
 }
+
 
 /**
  *
@@ -161,33 +191,30 @@ func (db *Database) LoadMigrations() {
  *
  * Uploading takes around of 1 minute
  */
-func (db *Database) LoadDictionary(path string) error {
+func LoadDictionary(path string) error {
 
 	file, err := os.Open(path)
-
-	defer func() error {
-		err := file.Close()
-		if err != nil {
-			return err
-		}
-		return nil
-	}()
+	defer file.Close()
 
 	if err != nil {
 		return err
 	}
 
 	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
 
-	fmt.Println("Dictionary loading. Please wait... (approximately 60 seconds)")
+	logger.Log.Debug("Loading the dictionary")
+	logger.Log.Debug("Please wait... (approximately 60 seconds)")
 
 	for scanner.Scan() {
+		dictSize ++
 		var word = RusWord{Word: scanner.Text()}
-		db.DBConnect.Create(&word)
+		if res := db.Create(&word); res.Error != nil{
+			return res.Error
+		}
 	}
 
-	fmt.Println("Done. Ready for game.")
+	logger.Log.Debug(fmt.Sprintf("Done. %d words uploaded", dictSize))
+	logger.Log.Debug("Database is ready for game")
 
 	return nil
 }
@@ -217,10 +244,10 @@ func hash(s string) uint32 {
  * @return error
  *
  */
-func (db *Database) AddUser(username string, password string, ip string) (*User, error) {
+func AddUser(username string, password string, ip string) (*User, error) {
 
 	newUser := User{Name: username, Password: hash(password), IpAddr: ip}
-	if res := db.DBConnect.Create(&newUser); res.Error != nil {
+	if res := db.Create(&newUser); res.Error != nil {
 		return nil, res.Error
 	}
 	return &newUser, nil
@@ -236,10 +263,10 @@ func (db *Database) AddUser(username string, password string, ip string) (*User,
  * @return error
  *
  */
-func (db *Database) CheckUser(username string, password string) (bool, error) {
+func CheckUser(username string, password string) (bool, error) {
 
 	user := &User{}
-	if res := db.DBConnect.
+	if res := db.
 		Where("name = ? and password = ?", username, hash(password)).
 		Find(&user); res.Error != nil {
 		return false, res.Error
@@ -256,15 +283,15 @@ func (db *Database) CheckUser(username string, password string) (bool, error) {
  * @return error
  *
  */
-func (db *Database) AddUserConnection(username string, ip string) (*UserConnection, error) {
+func AddUserConnection(username string, ip string) (*UserConnection, error) {
 
 	user := User{}
-	if res := db.DBConnect.Where("name = ?", username).First(&user); res.Error != nil {
+	if res := db.Where("name = ?", username).First(&user); res.Error != nil {
 		return nil, res.Error
 	}
 
 	newUserConnection := UserConnection{UserID: user.ID, IpAddr: ip}
-	if res := db.DBConnect.Create(&newUserConnection); res.Error != nil {
+	if res := db.Create(&newUserConnection); res.Error != nil {
 		return nil, res.Error
 	}
 
@@ -278,10 +305,10 @@ func (db *Database) AddUserConnection(username string, ip string) (*UserConnecti
  * @return error
  *
  */
-func (db *Database) StartGame() (*GameSession, error) {
+func StartGame() (*GameSession, error) {
 
 	gameSession := GameSession{}
-	if res := db.DBConnect.Create(&gameSession); res.Error != nil {
+	if res := db.Create(&gameSession); res.Error != nil {
 		return nil, res.Error
 	}
 	return &gameSession, nil
@@ -296,15 +323,15 @@ func (db *Database) StartGame() (*GameSession, error) {
  * @return error
  *
  */
-func (db *Database) NewUserInSession(username string, sessionID uint) (*UserInGame, error) {
+func NewUserInSession(username string, sessionID uint) (*UserInGame, error) {
 
 	user := User{}
-	if res := db.DBConnect.Where("name = ?", username).First(&user); res.Error != nil {
+	if res := db.Where("name = ?", username).First(&user); res.Error != nil {
 		return nil, res.Error
 	}
 
 	newUserInGame := UserInGame{UserID: user.ID, GameID: sessionID}
-	if res := db.DBConnect.Create(&newUserInGame); res.Error != nil {
+	if res := db.Create(&newUserInGame); res.Error != nil {
 		return nil, res.Error
 	}
 
@@ -320,16 +347,16 @@ func (db *Database) NewUserInSession(username string, sessionID uint) (*UserInGa
  *
  * Finds the last user session (single) and delete it.
  */
-func (db *Database) RemoveUserFromSession(username string) (*UserInGame, error) {
+func RemoveUserFromSession(username string) (*UserInGame, error) {
 
 	user := User{}
-	if res := db.DBConnect.Where("name = ?", username).First(&user); res.Error != nil {
+	if res := db.Where("name = ?", username).First(&user); res.Error != nil {
 		return nil, res.Error
 	}
 
 	// TODO: try to change line 312 to "...user.ID).First(&session).Order("ID DESC").Delete... "
 	session := UserInGame{}
-	if res := db.DBConnect.
+	if res := db.
 		Where("user_id = ?", user.ID).
 		Find(&session).
 		Order("ID").
@@ -350,41 +377,41 @@ func (db *Database) RemoveUserFromSession(username string) (*UserInGame, error) 
  *
  * Increments userslexicon value if word was used already
  */
-func (db *Database) AddWord(username string, word string) (*UsersLexicon, error) {
+func AddWord(username string, word string) (*UsersLexicon, error) {
 
 	user := User{}
-	if res := db.DBConnect.Where("name = ?", username).First(&user); res.Error != nil {
+	if res := db.Where("name = ?", username).First(&user); res.Error != nil {
 		return nil, res.Error
 	}
 	rusWord := RusWord{}
-	if res := db.DBConnect.Where("word = ?", word).First(&rusWord); res.Error != nil {
+	if res := db.Where("word = ?", word).First(&rusWord); res.Error != nil {
 		return nil, res.Error
 	}
 
 	rusWord.Popularity++
 
 	userLexicon := UsersLexicon{}
-	if res := db.DBConnect.
+	if res := db.
 		Where("user_id = ? and rus_word_id = ?", user.ID, rusWord.ID).
 		First(&userLexicon); res.Error != nil {
 
 		userLexicon = UsersLexicon{UserID: user.ID, RusWordID: rusWord.ID}
-		if res := db.DBConnect.Create(&userLexicon); res.Error != nil {
+		if res := db.Create(&userLexicon); res.Error != nil {
 			return nil, res.Error
 		}
 
 		user.WordsCount++
-		if res := db.DBConnect.Save(&user); res.Error != nil {
+		if res := db.Save(&user); res.Error != nil {
 			return nil, res.Error
 		}
 
 	} else {
 		userLexicon.Count++
-		if res := db.DBConnect.Save(&userLexicon); res.Error != nil {
+		if res := db.Save(&userLexicon); res.Error != nil {
 			return nil, res.Error
 		}
 	}
-	if res := db.DBConnect.Save(&rusWord); res.Error != nil {
+	if res := db.Save(&rusWord); res.Error != nil {
 		return nil, res.Error
 	}
 	return &userLexicon, nil
@@ -401,12 +428,12 @@ func (db *Database) AddWord(username string, word string) (*UsersLexicon, error)
  * for all players games ++
  * for winner wins ++
  */
-func (db *Database) GameOver(gameStatistics map[string][2]uint, gameID uint) error {
+func GameOver(gameStatistics map[string][2]uint, gameID uint) error {
 
 	for key, value := range gameStatistics {
 
 		user := User{}
-		if res := db.DBConnect.Where("name = ?", key).First(&user); res.Error != nil {
+		if res := db.Where("name = ?", key).First(&user); res.Error != nil {
 			return res.Error
 		}
 		user.Games++
@@ -415,26 +442,26 @@ func (db *Database) GameOver(gameStatistics map[string][2]uint, gameID uint) err
 		if value[1] == 1 {
 			user.Wins++
 			gameSession := GameSession{}
-			if res := db.DBConnect.Where("id = ?", gameID).First(&gameSession); res.Error != nil {
+			if res := db.Where("id = ?", gameID).First(&gameSession); res.Error != nil {
 				return res.Error
 			}
 			gameSession.WinnerID = user.ID
-			if res := db.DBConnect.Save(&gameSession); res.Error != nil {
+			if res := db.Save(&gameSession); res.Error != nil {
 				return res.Error
 			}
 		}
 
 		userInGame := UserInGame{}
-		if res := db.DBConnect.
+		if res := db.
 			Where("user_id = ? and game_id = ?", user.ID, gameID).
 			First(&userInGame); res.Error != nil {
 			return res.Error
 		}
 		userInGame.Score = value[0]
-		if res := db.DBConnect.Save(&userInGame); res.Error != nil {
+		if res := db.Save(&userInGame); res.Error != nil {
 			return res.Error
 		}
-		if res := db.DBConnect.Save(&user); res.Error != nil {
+		if res := db.Save(&user); res.Error != nil {
 			return res.Error
 		}
 
@@ -471,16 +498,16 @@ func normalizeLimitAndOrder(lenOfTable uint, limit *uint, offset *uint) {
  * @return error
  *
  */
-func (db *Database) GetTop(mode string, limit uint, offset uint) ([]User, error) {
+func GetTop(mode string, limit uint, offset uint) ([]User, error) {
 
 	top := []User{}
 
-	if res := db.DBConnect.Order(fmt.Sprintf("%s desc", mode)).Find(&top); res.Error != nil {
+	if res := db.Order(fmt.Sprintf("%s desc", mode)).Find(&top); res.Error != nil {
 		return nil, res.Error
 	}
 	normalizeLimitAndOrder(uint(len(top)), &limit, &offset)
 
-	if res := db.DBConnect.
+	if res := db.
 		Order(fmt.Sprintf("%s desc", mode)).
 		Limit(limit).
 		Offset(offset).
@@ -499,14 +526,12 @@ func (db *Database) GetTop(mode string, limit uint, offset uint) ([]User, error)
  * @return error
  *
  */
-func (db *Database) TopWords(limit uint, offset uint) ([]RusWord, error) {
+func TopWords(limit uint, offset uint) ([]RusWord, error) {
 
 	top := []RusWord{}
-	if res := db.DBConnect.Find(&top); res.Error != nil {
-		return nil, res.Error
-	}
-	normalizeLimitAndOrder(uint(len(top)), &limit, &offset)
-	if res := db.DBConnect.
+
+	normalizeLimitAndOrder(dictSize, &limit, &offset)
+	if res := db.
 		Order("popularity DESC").
 		Limit(limit).
 		Offset(offset).
@@ -527,21 +552,21 @@ func (db *Database) TopWords(limit uint, offset uint) ([]RusWord, error) {
  * @return error
  *
  */
-func (db *Database) WordTopUsers(word string, limit uint, offset uint) (map[string]uint, error) {
+func WordTopUsers(word string, limit uint, offset uint) (map[string]uint, error) {
 
 	topLexicons := []UsersLexicon{}
 
 	rusWordField := RusWord{}
-	if res := db.DBConnect.Where("word = ?", word).Find(&rusWordField); res.Error != nil {
+	if res := db.Where("word = ?", word).Find(&rusWordField); res.Error != nil {
 		return nil, res.Error
 	}
 
-	if res := db.DBConnect.Where("rus_word_id = ? ", rusWordField.ID).Find(&topLexicons); res.Error != nil {
+	if res := db.Where("rus_word_id = ? ", rusWordField.ID).Find(&topLexicons); res.Error != nil {
 		return nil, res.Error
 	}
 	normalizeLimitAndOrder(uint(len(topLexicons)), &limit, &offset)
 
-	if res := db.DBConnect.
+	if res := db.
 		Where("rus_word_id = ? ", rusWordField.ID).
 		Order("count DESC").
 		Limit(limit).
@@ -552,7 +577,7 @@ func (db *Database) WordTopUsers(word string, limit uint, offset uint) (map[stri
 	topUsers := make(map[string]uint)
 
 	for i := range topLexicons {
-		if res := db.DBConnect.Model(&(topLexicons[i])).Related(&(topLexicons[i]).User); res.Error != nil {
+		if res := db.Model(&(topLexicons[i])).Related(&(topLexicons[i]).User); res.Error != nil {
 			return nil, res.Error
 		}
 		topUsers[topLexicons[i].User.Name] = topLexicons[i].Count
@@ -569,21 +594,21 @@ func (db *Database) WordTopUsers(word string, limit uint, offset uint) (map[stri
  * @return error
  *
  */
-func (db *Database) GetCurrentGameUsersList(username string) ([]User, error) {
+func GetCurrentGameUsersList(username string) ([]User, error) {
 
 	lastGame := UserInGame{}
 
 	user := User{}
-	if res := db.DBConnect.Where("name = ?", username).First(&user); res.Error != nil {
+	if res := db.Where("name = ?", username).First(&user); res.Error != nil {
 		return nil, res.Error
 	}
 
-	if res := db.DBConnect.Where("user_id = ?", user.ID).Find(&lastGame); res.Error != nil {
+	if res := db.Where("user_id = ?", user.ID).Find(&lastGame); res.Error != nil {
 		return nil, res.Error
 	}
 
 	allCurrentGamePlayersSessions := []UserInGame{}
-	if res := db.DBConnect.
+	if res := db.
 		Where("game_id = ?", lastGame.GameID).
 		Preload("User").
 		Find(&allCurrentGamePlayersSessions); res.Error != nil {
@@ -610,19 +635,23 @@ type gameFullStat struct {
  * @return error
  *
  */
-func (db *Database) GetUserAllGamesStat(username string) (map[uint]gameFullStat, error) {
+func GetUserAllGamesStat(username string, limit uint, offset uint) (map[uint]gameFullStat, error) {
 
 	result := make(map[uint]gameFullStat)
 
 	user := User{}
-	if res := db.DBConnect.Where("name = ?", username).First(&user); res.Error != nil {
+	if res := db.Where("name = ?", username).First(&user); res.Error != nil {
 		return nil, res.Error
 	}
 
+	normalizeLimitAndOrder(user.Games, &limit, &offset)
+
 	userGamesList := []UserInGame{}
-	if res := db.DBConnect.
+	if res := db.
 		Where("user_id = ?", user.ID).
 		Preload("GameSession.Winner").
+		Limit(limit).
+		Offset(offset).
 		Find(&userGamesList); res.Error != nil {
 		return nil, res.Error
 	}
@@ -631,7 +660,7 @@ func (db *Database) GetUserAllGamesStat(username string) (map[uint]gameFullStat,
 
 		anotherUsersInThisGame := []UserInGame{}
 
-		if res := db.DBConnect.
+		if res := db.
 			Where("game_id = ?", userGamesList[i].GameID).
 			Preload("User").
 			Find(&anotherUsersInThisGame); res.Error != nil {
