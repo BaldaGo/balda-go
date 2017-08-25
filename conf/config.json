@@ -20,9 +20,9 @@
     },
     "Database" : {
         "Dialect" : "mysql",
-        "User" : "balda",
-        "Password": "energet",
-        "Host" : "db",
+        "User" : "root",
+        "Password": "georgemk",
+        "Host" : "localhost",
         "Port" : 3306,
         "Name" : "baldadb",
         "Engine" : "InnoDB",

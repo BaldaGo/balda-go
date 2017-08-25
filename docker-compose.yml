@@ -16,7 +16,7 @@ services:
     restart: always
 
   balda:
-    build: .
+    image: golang:1.8
     working_dir: /code/src/github.com/BaldaGo/balda-go
     depends_on:
     - db
@@ -26,5 +26,6 @@ services:
     - DEBUG=1
     ports:
     - "8888:8888"
+    build: .
     command: ./balda-go
     restart: always

@@ -55,7 +55,7 @@ var dictSize uint
 type User struct {
 	gorm.Model
 
-	Name       string `gorm:"unique"`
+	Name       string `gorm:"type:VARCHAR(20) CHARACTER SET utf8 COLLATE utf8_general_ci"`
 	Wins       uint   `gorm:"default:0"`
 	Password   uint32
 	IpAddr     string
@@ -88,7 +88,7 @@ type UserConnection struct {
 type RusWord struct {
 	gorm.Model
 
-	Word       string
+	Word       string `gorm:"type:VARCHAR(20) CHARACTER SET utf8 COLLATE utf8_general_ci"`
 	Popularity uint `gorm:"default:0"`
 }
 

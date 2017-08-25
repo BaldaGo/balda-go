@@ -44,6 +44,7 @@ func main() {
 	if err := db.Init(config.Database); err != nil{
 		panic(err)
 	}
+
 	if err := db.LoadDictionary(config.Server.DictPath); err != nil{
 		panic(err)
 	}
