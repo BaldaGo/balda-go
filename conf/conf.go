@@ -68,6 +68,7 @@ type DatabaseConf struct {
 	Host 		string
 	Port 		int
 	Name		string
+	Engine 		string
 	Options 	map[string]string
 }
 

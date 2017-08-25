@@ -41,7 +41,7 @@ func main() {
 
 	server := server.New(config.Server)
 
-	if err := db.ConnectAndMigrate(config.Database); err != nil{
+	if err := db.Init(config.Database); err != nil{
 		panic(err)
 	}
 	if err := db.LoadDictionary(config.Server.DictPath); err != nil{

@@ -31,6 +31,7 @@ import (
 	// Project
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/logger"
+	"strings"
 )
 
 /**
@@ -151,14 +152,18 @@ type UserInGame struct {
  * @return error
  *
  */
-func ConnectAndMigrate(cfg conf.DatabaseConf) (error) {
+func Init(cfg conf.DatabaseConf) (error) {
 
 	var err error
 	var parsedOptions string
+	options := []string{}
 
 	for key, value := range cfg.Options{
-		parsedOptions += fmt.Sprintf("%s=%s&", key, value)
+		options = append(options, fmt.Sprintf("%s=%s", key, value))
 	}
+
+	parsedOptions = strings.Join(options, "&")
+
 	if db, err = gorm.Open(cfg.Dialect,
 		fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?%s",
 			cfg.User,
@@ -166,11 +171,11 @@ func ConnectAndMigrate(cfg conf.DatabaseConf) (error) {
 			cfg.Host,
 			cfg.Port,
 			cfg.Name,
-			parsedOptions[:len(parsedOptions)-1])); err != nil {
+			parsedOptions)); err != nil {
 		return err
 	}
 
-	if res := db.Set("gorm:insert_options", "ENGINE=InnoDB").
+	if res := db.Set("gorm:insert_options", fmt.Sprintf("ENGINE=%s",cfg.Engine)).
 		AutoMigrate(&User{},
 		&RusWord{},
 		&GameSession{},
@@ -202,8 +207,7 @@ func LoadDictionary(path string) error {
 
 	scanner := bufio.NewScanner(file)
 
-	logger.Log.Debug("Loading the dictionary")
-	logger.Log.Debug("Please wait... (approximately 60 seconds)")
+	logger.Log.Info("Loading dictionary. Please wait... (approximately 60 seconds)")
 
 	for scanner.Scan() {
 		dictSize ++
@@ -213,8 +217,8 @@ func LoadDictionary(path string) error {
 		}
 	}
 
-	logger.Log.Debug(fmt.Sprintf("Done. %d words uploaded", dictSize))
-	logger.Log.Debug("Database is ready for game")
+	logger.Log.Info(fmt.Sprintf("Done. %d words uploaded", dictSize))
+	logger.Log.Info("Database is ready for game")
 
 	return nil
 }
