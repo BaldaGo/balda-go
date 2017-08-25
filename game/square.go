@@ -11,6 +11,7 @@ import (
 	// System
 	"fmt"
 	"strings"
+	"strconv"
 
 	// Third-party
 
@@ -47,6 +48,7 @@ func NewSquare(size int) Square {
 	}
 
 	word := dict.RandWordOfAS()
+	//word := "ворон"
 	area.addUsedWord(word)
 	line := (size - 1) / 2
 	for i := range area.matrix[line] {
@@ -112,21 +114,37 @@ func (area Square) wordAlreadyUsed(word []rune) bool {
 /**
  * @brief Just pretty print of game area
  */
-func (area Square) PrintArea() {
-	fmt.Print("  ")
+
+func (area Square) StrPrintArea() string {
+	str := "  "
 	for j := range area.matrix {
-		fmt.Printf("%d ", j)
+		str = strings.Join([]string{str, strconv.Itoa(j), " "}, "")
 	}
 	for i := range area.matrix {
-		fmt.Printf("\n%d", i)
-		fmt.Printf("%c", area.matrix[i])
+		str = strings.Join([]string{str, "\n", strconv.Itoa(i), "["}, "")
+		for j := range area.matrix[i] {
+			str = strings.Join([]string{str, string(area.matrix[i][j])}, "")
+			if (j != len(area.matrix[i]) - 1) {
+				str = strings.Join([]string{str, " "}, "")
+			}
+		}
+		str = strings.Join([]string{str, "]"}, "")
 	}
-	fmt.Print("\n")
+	logger.Log.Debug("Gaming area printed")
+	return str
+}
+
+func (area Square) PrintArea() {
+	fmt.Println(area.StrPrintArea())
 	logger.Log.Debug("Gaming area printed")
 }
 
+func (area Square) StrPrintUsedWords() string {
+	return strings.Join(area.usedWords, "\n")
+}
+
 func (area Square) PrintUsedWords() {
-	fmt.Println(area.usedWords)
+	fmt.Println(area.StrPrintUsedWords())
 }
 
 /**
@@ -225,4 +243,15 @@ func (area *Square) CheckWord(x int, y int, symbol rune, word []rune) bool {
 
 	logger.Log.Debugf("Word '%s' didn't add", string(word))
 	return false
+}
+
+func (area *Square) IsFull() bool {
+	for i := range area.matrix {
+		for j := range area.matrix[i] {
+			if (area.matrix[i][j] == '-') {
+				return false
+			}
+		} 
+	}
+	return true
 }

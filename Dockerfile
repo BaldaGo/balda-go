@@ -7,8 +7,9 @@ RUN \
     git \
     golang-go
 
-ENV GOPATH /code
 
+ENV GOPATH /code
 ADD . /code/src/github.com/BaldaGo/balda-go
 WORKDIR /code/src/github.com/BaldaGo/balda-go
+
 RUN go build

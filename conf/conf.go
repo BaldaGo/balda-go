@@ -27,9 +27,10 @@ import (
  * It has a basic modules structure
  */
 type Config struct {
-	Stage  string     ///< Stage enum(dev, test, prod)
-	Server ServerConf ///< Server configurations
-	Logger LoggerConf ///< Logger configurations
+	Stage    string       ///< Stage enum(dev, test, prod)
+	Server   ServerConf   ///< Server configurations
+	Logger   LoggerConf   ///< Logger configurations
+	Database DatabaseConf ///< Database configurations
 }
 
 /**
@@ -53,6 +54,22 @@ type ServerConf struct {
 	Deadline        time.Duration ///< Deadline for connection (in milliseconds) (default 1000)
 	Game            GameConf      ///< Game configurations
 	TimeoutForLogin time.Duration ///< Timeout for login in seconds (default 120)
+	DictPath        string        ///< Russian language Dictionary path
+}
+
+/**
+ * @class DatabaseConf
+ * @brief Class, provides configuration for db connection
+ */
+type DatabaseConf struct {
+	Dialect  string
+	User     string
+	Password string
+	Host     string
+	Port     int
+	Name     string
+	Engine   string
+	Options  map[string]string
 }
 
 /**

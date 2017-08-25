@@ -3,6 +3,7 @@
 *.dll
 *.so
 *.dylib
+balda-go
 
 # Test binary, build with `go test -c`
 *.test
@@ -13,3 +14,7 @@
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 .DS_Store
+.idea
+
+# Docker temp files and directories
+mysql/

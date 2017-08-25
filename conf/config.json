@@ -3,10 +3,11 @@
     "Server" : {
         "Host" : "127.0.0.1",
         "Port" : 8888,
-        "Concurrency" : 1,
+        "Concurrency" : 4000,
         "NumberOfGames" : 1000,
         "Deadline" : 1000,
         "TimeoutForLogin" : 120,
+        "DictPath" : "dict/dictionary.txt",
         "Game" : {
             "Timeout" : 30,
             "MaxUsernameLength" : 255,
@@ -17,5 +18,19 @@
     "Logger" : {
         "LoggerFormat" : "%{color}%{time:15:04:05.000} %{shortfile} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}\n",
         "File" : ""
+    },
+    "Database" : {
+        "Dialect" : "mysql",
+        "User" : "balda",
+        "Password": "energet",
+        "Host" : "db",
+        "Port" : 3306,
+        "Name" : "baldadb",
+        "Engine" : "InnoDB",
+        "Options": {
+            "charset" : "utf8",
+            "parseTime" : "True",
+            "loc" : "Local"
+        }
     }
 }

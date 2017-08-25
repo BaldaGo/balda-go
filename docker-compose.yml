@@ -7,13 +7,13 @@ services:
     environment:
     - DEBUG=1
     build: .
-    command: ./balda-go
     depends_on:
     - db
     ports:
     - "8888:8888"
     volumes:
     - ./:/code/src/github.com/BaldaGo/balda-go
+    command: ./balda-go
     restart: always
 
   db:
