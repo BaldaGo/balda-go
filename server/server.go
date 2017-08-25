@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"fmt"
 
 	// Third-party
 	_ "github.com/go-sql-driver/mysql"
@@ -205,16 +206,18 @@ func work(ctx context.Context) error {
 		case result := <-buffer:
 			logger.Log.Debugf("Readed '%s' from client", result)
 
-			/*			continue, response := game.Continue(result, user.login)
-						if !continue {
-							s.broadcast(response, user.login, errors, &goroutines)
-							logger.Log.Infof("Game over! %s", response)
-							c.Close()
-							terminated = true
-						} else {
-							s.broadcast(response, user.login, errors, &goroutines)
-						}
-			*/
+			con, response := s.Sessions[user.sessionId].Game.Continue(string(result), user.login)
+fmt.Println(response)
+			if !con {
+				s.broadcast(response, user.login, errors)
+				logger.Log.Infof("Game over! %s", response)
+				c.Close()
+				terminated = true
+			} else {
+fmt.Println("in continue")
+				s.broadcast(response, user.login, errors)
+			}
+			
 			logger.Log.Debug("buffer")
 			go asyncReadBytes(c, buffer, errors)
 		case <-time.After(s.Timeout):
@@ -273,6 +276,7 @@ func asyncReadBytes(c net.Conn, buffer chan<- []byte, errors chan<- net.Conn) {
 
 func (s *Server) broadcast(msg string, login string, errors chan<- net.Conn) {
 	sessionID := s.Users[login]
+	msg = fmt.Sprintf("%s\n", msg)
 	for _, i := range s.Sessions[sessionID].Users {
 		go asyncWriteBytes(i.conn, []byte(msg), errors)
 	}

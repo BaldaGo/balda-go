@@ -12,11 +12,13 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+	"fmt"
 
 	// Third-party
 
 	// Project
 	"github.com/BaldaGo/balda-go/conf"
+	//"github.com/BaldaGo/balda-go/db"
 )
 
 /**
@@ -50,8 +52,8 @@ type Put struct {
  * @brief Create a new game
  * @return game Pointer to the created Game object
  */
-func NewGame(cfg conf.GameConf) Game {
-	g := Game{square: NewSquare(cfg.AreaSize)}
+func NewGame(cfg conf.GameConf) *Game {
+	g := &Game{square: NewSquare(cfg.AreaSize)}
 	g.AreaSize = cfg.AreaSize
 	g.MaxUsersPerGame = cfg.NumberUsersPerGame
 	g.funcMap = make(map[string]interface{})
@@ -81,6 +83,7 @@ func (game *Game) Continue(str string, user string) (bool, string) {
 	}
 	if str == "area" || str == "words" || str == "step" || str == "score" {
 		return true, game.funcMap[str].(func() string)()
+
 	}
 	if game.step >= len(game.users) {
 		game.step = game.step % len(game.users)
@@ -102,10 +105,11 @@ func (game *Game) Continue(str string, user string) (bool, string) {
 
 func (game *Game) AddUser(login string) error {
 	if game.onStart || len(game.users) >= game.MaxUsersPerGame {
-		return errors.New("Can't add user")
+		return errors.New("Can't add user to game")
 	}
 	game.users = append(game.users, login)
 	game.score[login] = 0
+fmt.Println(game.users)
 	return nil
 }
 
@@ -135,9 +139,7 @@ func (game *Game) whoStep() string {
 
 func (game *Game) showScore() string {
 	str := ""
-	//fmt.Println("IN shoeScore")
 	for us, sc := range game.score {
-		//fmt.Println("iterating")
 		str = strings.Join([]string{str, us, " : ", strconv.Itoa(sc), "\n"}, "")
 	}
 	str = strings.TrimSuffix(str, "\n")
