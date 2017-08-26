@@ -47,7 +47,7 @@ type User struct {
  */
 type Session struct {
 	Users []User    ///< Array of users in this session
-	Game  game.Game ///< Game object
+	Game  *game.Game ///< Game object
 }
 
 /**

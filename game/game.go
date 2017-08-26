@@ -22,7 +22,7 @@ import (
 	"fmt"
 )
 
-var databaseError string = "DATABASE_ERROR"
+const databaseError string = "DATABASE_ERROR"
 
 /**
  * @class Game
@@ -57,8 +57,8 @@ type Put struct {
  * @return game Pointer to the created Game object
  */
 
-func NewGame(cfg conf.GameConf) (Game, error) {
-	g := Game{square: NewSquare(cfg.AreaSize)}
+func NewGame(cfg conf.GameConf) (*Game, error) {
+	g := &Game{square: NewSquare(cfg.AreaSize)}
 	g.AreaSize = cfg.AreaSize
 	g.MaxUsersPerGame = cfg.NumberUsersPerGame
 	g.funcMap = make(map[string]interface{})
