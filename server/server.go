@@ -206,15 +206,13 @@ func work(ctx context.Context) error {
 		case result := <-buffer:
 			logger.Log.Debugf("Readed '%s' from client", result)
 
-			con, response := s.Sessions[user.sessionId].Game.Continue(string(result), user.login)
-fmt.Println(response)
+			con, response, _ := s.Sessions[user.sessionId].Game.Continue(string(result), user.login)
 			if !con {
 				s.broadcast(response, user.login, errors)
 				logger.Log.Infof("Game over! %s", response)
 				c.Close()
 				terminated = true
 			} else {
-fmt.Println("in continue")
 				s.broadcast(response, user.login, errors)
 			}
 			
