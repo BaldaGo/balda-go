@@ -7,6 +7,8 @@
         "NumberOfGames" : 1000,
         "Deadline" : 1000,
         "TimeoutForLogin" : 120,
+        "SystemLogin" : "balda",
+        "WaitTime" : 100,
         "DictPath" : "dict/dictionary.txt",
         "Game" : {
             "Timeout" : 30,
