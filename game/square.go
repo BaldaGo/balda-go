@@ -10,8 +10,8 @@ package game
 import (
 	// System
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 
 	// Third-party
 
@@ -36,8 +36,8 @@ type Square struct {
  *
  * Create new Square and initialize them with random word
  */
-func NewSquare(size int) *Square {
-	area := new(Square)
+func NewSquare(size int) Square {
+	var area Square
 	area.matrix = make([][]rune, size)
 
 	for i := range area.matrix {
@@ -73,7 +73,7 @@ func (area *Square) destructor() {
  * A shallow copy is not suitable for our algorithm,
  * because recursion should work with a copy of our matrix
  */
-func (b Square) deepCopy(a Square) {
+func (b *Square) deepCopy(a Square) {
 	for i := range a.matrix {
 		for j := range a.matrix[i] {
 			b.matrix[i][j] = a.matrix[i][j]
@@ -99,7 +99,7 @@ func (area *Square) addUsedWord(word string) {
  *
  * Find word into list of words
  */
-func (area *Square) wordAlreadyUsed(word []rune) bool {
+func (area Square) wordAlreadyUsed(word []rune) bool {
 	for i := range area.usedWords {
 		if area.usedWords[i] == string(word) {
 			logger.Log.Debugf("Word '%s' used already in this game", string(word))
@@ -124,7 +124,7 @@ func (area Square) StrPrintArea() string {
 		str = strings.Join([]string{str, "\n", strconv.Itoa(i), "["}, "")
 		for j := range area.matrix[i] {
 			str = strings.Join([]string{str, string(area.matrix[i][j])}, "")
-			if (j != len(area.matrix[i]) - 1) {
+			if j != len(area.matrix[i])-1 {
 				str = strings.Join([]string{str, " "}, "")
 			}
 		}
@@ -153,7 +153,7 @@ func (area Square) PrintUsedWords() {
  * @param[in] y
  * @param[in] symbol
  */
-func (area Square) addSymbol(x int, y int, symbol rune) {
+func (area *Square) addSymbol(x int, y int, symbol rune) {
 	area.matrix[x][y] = symbol
 	logger.Log.Debugf("New symbol '%c' added", symbol)
 }
@@ -232,7 +232,7 @@ func (area *Square) CheckWord(x int, y int, symbol rune, word []rune) bool {
 		for j := range area.matrix[i] {
 			if tempArea.matrix[i][j] == rune(word[0]) &&
 				(tempArea.findFull(x, y, i, j, word, false) != 0) {
-				area.deepCopy(*tempArea)
+				area.deepCopy(tempArea)
 				area.addUsedWord(string(word))
 				logger.Log.Debugf("New word '%s' added", string(word))
 				return true
@@ -248,10 +248,10 @@ func (area *Square) CheckWord(x int, y int, symbol rune, word []rune) bool {
 func (area *Square) IsFull() bool {
 	for i := range area.matrix {
 		for j := range area.matrix[i] {
-			if (area.matrix[i][j] == '-') {
+			if area.matrix[i][j] == '-' {
 				return false
 			}
-		} 
+		}
 	}
 	return true
 }

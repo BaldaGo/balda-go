@@ -1,31 +1,30 @@
 version: '2'
 
 services:
+  balda:
+    working_dir: /code/src/github.com/BaldaGo/balda-go
+    environment:
+    - DEBUG=1
+    build: .
+    depends_on:
+    - db
+    ports:
+    - "8888:8888"
+    volumes:
+    - ./:/code/src/github.com/BaldaGo/balda-go
+    command: ./balda-go
+    restart: always
 
   db:
     image: mysql
     ports:
     - "3333:3306"
+    command: mysql -uroot -p12345 -e 'CREATE DATABASE `baldadb` DEFAULT CHARSET "utf8"'
     environment:
       MYSQL_ROOT_PASSWORD: 12345
       MYSQL_DATABASE: baldadb
       MYSQL_USER: balda
-      MYSQL_PASSWORD: energet
+      MYSQL_PASSWORD: balda
     volumes:
     - ./mysql:/var/lib/mysql
-    restart: always
-
-  balda:
-    image: golang:1.8
-    working_dir: /code/src/github.com/BaldaGo/balda-go
-    depends_on:
-    - db
-    volumes:
-    - ./:/code/src/github.com/BaldaGo/balda-go
-    environment:
-    - DEBUG=1
-    ports:
-    - "8888:8888"
-    build: .
-    command: ./balda-go
     restart: always

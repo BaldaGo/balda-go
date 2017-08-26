@@ -10,6 +10,7 @@ package server
 import (
 	// System
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -20,8 +21,8 @@ import (
 	// Third-party
 
 	// Project
-	"github.com/BaldaGo/balda-go/logger"
 	"github.com/BaldaGo/balda-go/game"
+	"github.com/BaldaGo/balda-go/logger"
 )
 
 var (
@@ -45,8 +46,8 @@ type User struct {
  * Session is a thing which aggregate users in one game
  */
 type Session struct {
-	users []User ///< Array of users in this session
-	Game  *game.Game  ///< Game object
+	Users []User    ///< Array of users in this session
+	Game  game.Game ///< Game object
 }
 
 /**
@@ -56,7 +57,15 @@ type Session struct {
  *
  * Prompt user, ask him to put his name and session id, login him and associate with session by id
  */
-func (s *Server) login(c net.Conn) (*User, error) {
+func login(ctx context.Context) error {
+	var s *Server
+	var c net.Conn
+	var user chan User
+
+	s = ctx.Value(ServerKey).(*Server)
+	c = ctx.Value(ConnKey).(net.Conn)
+	user = ctx.Value(ChanKey).(chan User)
+
 	// Say welcome and ask username
 	c.Write([]byte("Welcome to balda game!\nPlease, enter your name to log in: "))
 
@@ -64,45 +73,50 @@ func (s *Server) login(c net.Conn) (*User, error) {
 	io := bufio.NewReader(c)
 	line, err := io.ReadString('\n')
 	if err != nil {
-		return nil, logger.Trace(err, "Communication error")
+		return logger.Trace(err, "Communication error")
 	}
 
 	name := strings.Replace(strings.Replace(line, "\n", "", -1), "\r", "", -1)
 	if name == "" {
-		return nil, errors.New("Empty name")
+		return errors.New("Empty name")
 	}
 
 	if utf8.RuneCountInString(name) > s.MaxUsernameLength {
-		return nil, errors.New("Too long name")
+		return errors.New("Too long name")
 	}
 
 	// Read and validate session id
 	c.Write([]byte("Please, enter the number of game your want to assign: "))
 	line, err = io.ReadString('\n')
 	if err != nil {
-		return nil, logger.Trace(err, "Communication error")
+		return logger.Trace(err, "Communication error")
 	}
 
 	line = strings.Replace(strings.Replace(line, "\n", "", -1), "\r", "", -1)
 	if line == "" {
-		return nil, errors.New("Empty session id")
+		return errors.New("Empty session id")
 	}
 
 	SessionID, err := strconv.Atoi(line)
 	if err != nil {
-		return nil, logger.Trace(err, "Session ID must be a positive integer")
+		return logger.Trace(err, "Session ID must be a positive integer")
 	} else if int(SessionID) >= len(s.Sessions) {
-		return nil, errors.New(fmt.Sprintf("Session with ID=%d is not exists (Session ID is too big)", SessionID))
+		return errors.New(fmt.Sprintf("Session with ID=%d is not exists (Session ID is too big)", SessionID))
 	} else if int(SessionID) < 0 {
-		return nil, errors.New("Session ID must be a positive integer")
+		return errors.New("Session ID must be a positive integer")
 	}
 
+	//TODO: Validate size of session.users
+	//TODO: Login or registr
+
 	// Create a new user object
-	user := User{conn: c, login: name, sessionId: SessionID}
+	newUser := User{conn: c, login: name, sessionId: SessionID}
 
 	// Associate user with a session by session id
-	s.Users[SessionID] = user
-	s.Sessions[SessionID].users = append(s.Sessions[user.sessionId].users, user)
+	s.Sessions[SessionID].Users = append(s.Sessions[newUser.sessionId].Users, newUser)
+	s.Users[newUser.login] = SessionID
 
-	return &user, nil
+	user <- newUser
+
+	return nil
 }
