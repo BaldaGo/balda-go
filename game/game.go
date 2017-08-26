@@ -230,10 +230,6 @@ func (game *Game) word(str string) (bool, string, error) {
 	game.onPut = false
 	ok := game.square.CheckWord(game.putting.y, game.putting.x, game.putting.sym, []rune(game.putting.word))
 	if ok {
-		game.stepUser++
-		if game.stepUser == len(game.users) {
-			game.stepUser = 0
-		}
 		sc := utf8.RuneCountInString(game.putting.word)
 		game.scoreMap[game.users[game.stepUser]] += sc
 		if game.square.IsFull() {
@@ -250,6 +246,10 @@ func (game *Game) word(str string) (bool, string, error) {
 			}
 			game.FinishGame(winner)
 			return false, strings.Join([]string{"Game over.", game.score(), "Our winner:", winner}, "\n\r"), nil
+		}		
+		game.stepUser++
+		if game.stepUser == len(game.users) {
+			game.stepUser = 0
 		}
 		return true, strings.Join([]string{"Success", game.area()}, "\n\r"), nil
 	}
