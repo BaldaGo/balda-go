@@ -11,13 +11,13 @@ import (
 	// System
 	"bufio"
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"time"
-	"fmt"
 
 	// Third-party
 	_ "github.com/go-sql-driver/mysql"
@@ -28,6 +28,17 @@ import (
 	"github.com/BaldaGo/balda-go/dict"
 	"github.com/BaldaGo/balda-go/game"
 	"github.com/BaldaGo/balda-go/logger"
+)
+
+/*
+ * @brief enum BroadcastFlags
+ *
+ * Specified, who will have broadcastins message
+ */
+const (
+	BC_ALL   = 1 << iota ///< All users in this session accept message
+	BC_SELF              ///< Only sender accept message
+	BC_OTHER             ///< All users in this session without sender accept message
 )
 
 /**
@@ -49,6 +60,8 @@ type Server struct {
 	Sessions          []Session      ///< Array of active sessions
 	Users             map[string]int ///< Map of logins in each sessionID
 	Signals           chan os.Signal ///< Channel of system signals like SIGINT and SIGKILL
+	WaitTime          time.Duration
+	SystemLogin       string
 }
 
 /**
@@ -64,6 +77,8 @@ func New(cfg conf.ServerConf) Server {
 	s.port = cfg.Port
 	s.Deadline = cfg.Deadline * time.Millisecond
 	s.TimeoutForLogin = cfg.TimeoutForLogin * time.Second
+	s.SystemLogin = cfg.SystemLogin
+	s.WaitTime = cfg.WaitTime * time.Millisecond
 
 	s.Timeout = cfg.Game.Timeout * time.Second
 	s.MaxUsernameLength = cfg.Game.MaxUsernameLength
@@ -88,11 +103,11 @@ func (s *Server) PreRun(cfg conf.ServerConf) error {
 	s.Users = make(map[string]int)
 	s.Signals = make(chan os.Signal, 1)
 	signal.Notify(s.Signals, os.Interrupt)
-  
-  var err error
+
+	var err error
 	for i := 0; i < len(s.Sessions); i++ {
 		s.Sessions[i].Game, err = game.NewGame(cfg.Game)
-		if err != nil{
+		if err != nil {
 			return err
 		}
 	}
@@ -124,7 +139,6 @@ func (s *Server) Run() error {
 
 	defer l.Close()
 
-	logger.Log.Debug(time.Now().Add(s.Deadline))
 	l.SetDeadline(time.Now().Add(s.Deadline))
 	logger.Log.Infof("Server started listening on: %s:%d", s.host, s.port)
 
@@ -141,8 +155,6 @@ func (s *Server) Run() error {
 			conn, err := l.Accept()
 
 			if err != nil {
-				err = logger.Trace(err, "Listening for new user from is timed out")
-				logger.Log.Debug(err.Error())
 				l.SetDeadline(time.Now().Add(s.Deadline))
 				break
 			}
@@ -188,21 +200,23 @@ func work(ctx context.Context) error {
 	c = ctx.Value(ConnKey).(net.Conn)
 
 	users := make(chan User, 1)
-	defer close(users)
+	buffer := make(chan []byte)
+	errors := make(chan net.Conn)
+
 	context := context.WithValue(context.WithValue(context.WithValue(context.Background(), ConnKey, c), ChanKey, users), ServerKey, s)
 	if err := SyncFuncWithTimeout(login, context, s.TimeoutForLogin); err != nil {
+		s.broadcast("You're too slow! Sorry... Bye", s.SystemLogin, BC_SELF, errors)
 		err = logger.Tracef(err, "User from %s can't log in", c.RemoteAddr())
 		logger.Log.Warning(err.Error())
+		time.Sleep(s.WaitTime)
 		c.Close()
 		return err
 	}
 
 	user := <-users
+	logger.Log.Infof("User from %s logined as %s and associated with session %d", c.RemoteAddr(), user.login, user.sessionId)
 
-	buffer := make(chan []byte)
-	errors := make(chan net.Conn)
-
-	go asyncWriteBytes(c, []byte("Hello,"+user.login+"!\n"), errors)
+	s.broadcast(fmt.Sprintf("Welcome %s!\n\rPlease, wait other players...", user.login), user.login, BC_ALL, errors)
 	go asyncReadBytes(c, buffer, errors)
 
 	terminated := false
@@ -211,28 +225,44 @@ func work(ctx context.Context) error {
 		case result := <-buffer:
 			logger.Log.Debugf("Readed '%s' from client", result)
 
-			con, response, _ := s.Sessions[user.sessionId].Game.Continue(string(result), user.login)
-			if !con {
-				s.broadcast(response, user.login, errors)
+			// Game interactive
+			play, response, err := s.Sessions[user.sessionId].Game.Continue(string(result), user.login)
+			logger.Log.Debugf("Generic answers '%s'. Continue: %b", response, play)
+
+			if err != nil {
+				s.broadcast(err.Error(), s.SystemLogin, BC_ALL, errors)
+				logger.Trace(err, "Error occured while parsing")
+				terminated = true
+				break
+			}
+
+			if !play {
+				s.broadcast(response, user.login, BC_ALL, errors)
 				logger.Log.Infof("Game over! %s", response)
-				c.Close()
+				for _, u := range s.Sessions[user.sessionId].Users {
+					u.conn.Close()
+				}
 				terminated = true
 			} else {
-				s.broadcast(response, user.login, errors)
+				s.broadcast(response, user.login, BC_ALL, errors)
 			}
-			
-			logger.Log.Debug("buffer")
+
 			go asyncReadBytes(c, buffer, errors)
+
 		case <-time.After(s.Timeout):
 			logger.Log.Warning("Timeout while reading...")
+			s.broadcast(fmt.Sprintf("%s doesn't catch his move", user.login), user.login, BC_OTHER, errors)
+			s.broadcast("You're too slow!", s.SystemLogin, BC_SELF, errors)
+
 			if terminated {
 				c.Close()
 				break
 			}
+
 		case c := <-errors:
-			logger.Log.Debug("errors")
-			err := c.Close()
-			return err
+			logger.Log.Warningf("User from %s failed", c.RemoteAddr())
+			return c.Close()
+
 		case <-ctx.Done():
 			logger.Log.Debug("Terminated")
 			terminated = true
@@ -254,8 +284,12 @@ func work(ctx context.Context) error {
 func asyncWriteBytes(c net.Conn, bytes []byte, errors chan<- net.Conn) {
 	n, err := c.Write(bytes)
 	if err != nil || n != len(bytes) {
-		errors <- c
-		logger.Log.Warningf("Error while writing to connection to %s (%s)", c.RemoteAddr(), err.Error())
+		if c == nil {
+			logger.Log.Warningf("Error while writing to connection (%s)", c.RemoteAddr(), err.Error())
+		} else {
+			logger.Log.Warningf("Error while writing to connection to %s (%s)", c.RemoteAddr(), err.Error())
+			errors <- c
+		}
 	}
 }
 
@@ -270,17 +304,34 @@ func asyncReadBytes(c net.Conn, buffer chan<- []byte, errors chan<- net.Conn) {
 	buf, err := io.ReadString('\n')
 	line := strings.Replace(strings.Replace(buf, "\n", "", -1), "\r", "", -1)
 	if err != nil || line == "" {
-		logger.Log.Warningf("Error while reading from connection from %s (%s)", c.RemoteAddr(), err.Error())
-		errors <- c
+		if c == nil {
+			logger.Log.Warningf("Error while reading from connection (%s)", c.RemoteAddr(), err.Error())
+		} else {
+			logger.Log.Warningf("Error while reading from connection from %s (%s)", c.RemoteAddr(), err.Error())
+			errors <- c
+		}
 	} else {
 		buffer <- []byte(line)
 	}
 }
 
-func (s *Server) broadcast(msg string, login string, errors chan<- net.Conn) {
+func (s *Server) broadcast(raw string, login string, flags int, errors chan<- net.Conn) {
+	msg := fmt.Sprintf("%s> %s\n\r", login, raw)
 	sessionID := s.Users[login]
-	msg = fmt.Sprintf("%s\n", msg)
 	for _, i := range s.Sessions[sessionID].Users {
-		go asyncWriteBytes(i.conn, []byte(msg), errors)
+		switch flags {
+		case BC_ALL:
+			go asyncWriteBytes(i.conn, []byte(msg), errors)
+		case BC_SELF:
+			if i.login == login {
+				go asyncWriteBytes(i.conn, []byte(msg), errors)
+			}
+		case BC_OTHER:
+			if i.login != login {
+				go asyncWriteBytes(i.conn, []byte(msg), errors)
+			}
+		default: // BC_ALL
+			go asyncWriteBytes(i.conn, []byte(msg), errors)
+		}
 	}
 }

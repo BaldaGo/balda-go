@@ -21,6 +21,7 @@ import (
 	// Third-party
 
 	// Project
+	"github.com/BaldaGo/balda-go/db"
 	"github.com/BaldaGo/balda-go/game"
 	"github.com/BaldaGo/balda-go/logger"
 )
@@ -46,7 +47,7 @@ type User struct {
  * Session is a thing which aggregate users in one game
  */
 type Session struct {
-	Users []User    ///< Array of users in this session
+	Users []User     ///< Array of users in this session
 	Game  *game.Game ///< Game object
 }
 
@@ -85,6 +86,32 @@ func login(ctx context.Context) error {
 		return errors.New("Too long name")
 	}
 
+	logger.Log.Debugf("User from %s logined with login: %s", c.RemoteAddr(), name)
+
+	// Read password
+	pass, err := io.ReadString('\n')
+	if err != nil {
+		return logger.Trace(err, "Communication error")
+	}
+
+	pass = strings.Replace(strings.Replace(pass, "\n", "", -1), "\r", "", -1)
+	if pass == "" {
+		return errors.New("Empty password")
+	}
+
+	// Create user if not exists
+	exists, _ := db.CheckUser(name, pass)
+
+	if !exists {
+		u, err := db.AddUser(name, pass, c.RemoteAddr().String())
+		if err != nil {
+			err = logger.Trace(err, "Database error")
+			logger.Log.Critical(err.Error())
+			return err
+		}
+		logger.Log.Debug("New user created", *u)
+	}
+
 	// Read and validate session id
 	c.Write([]byte("Please, enter the number of game your want to assign: "))
 	line, err = io.ReadString('\n')
@@ -106,7 +133,9 @@ func login(ctx context.Context) error {
 		return errors.New("Session ID must be a positive integer")
 	}
 
-	//TODO: Login or registr
+	if len(s.Sessions[SessionID].Users) >= s.Sessions[SessionID].Game.MaxUsersPerGame {
+		return errors.New("Sorry, this game is already starts")
+	}
 
 	// Create a new user object
 	newUser := User{conn: c, login: name, sessionId: SessionID}
@@ -116,16 +145,23 @@ func login(ctx context.Context) error {
 	if err != nil {
 		return logger.Trace(err, "Can't accept the game")
 	}
+
 	s.Sessions[SessionID].Users = append(s.Sessions[newUser.sessionId].Users, newUser)
-	if len(s.Sessions[SessionID].Users) == s.Sessions[SessionID].Game.MaxUsersPerGame {
-		s.Sessions[SessionID].Game.StartGame()/*
-		for _, u := range s.Sessions[SessionID].Users {
-			u.conn.Write([]byte("Game started!\n"))
-		}*/
-	}
 	s.Users[newUser.login] = SessionID
 
+	if len(s.Sessions[SessionID].Users) == s.Sessions[SessionID].Game.MaxUsersPerGame {
+		s.Sessions[SessionID].Game.StartGame()
+		logger.Log.Info("Game started:", s.Sessions[SessionID].Game)
+		errors := make(chan net.Conn)
+		s.broadcast("Game started!", s.SystemLogin, BC_ALL, errors)
+		for c := range errors {
+			logger.Log.Warning("Error occured while sending 'Game started' to", c.RemoteAddr())
+			c.Close()
+		}
+	}
+
 	user <- newUser
+	logger.Log.Debugf("User from %s associated with session: %d", c.RemoteAddr(), SessionID)
 
 	return nil
 }

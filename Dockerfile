@@ -9,8 +9,7 @@ RUN \
 
 
 ENV GOPATH /code
-ADD . /code/src/github.com/BaldaGo/balda-go
+COPY . code/src/github.com/BaldaGo/balda-go
 WORKDIR /code/src/github.com/BaldaGo/balda-go
-RUN cat requirements.txt | xargs go get -u 
 
-RUN go build
+CMD go build

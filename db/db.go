@@ -89,7 +89,7 @@ type RusWord struct {
 	gorm.Model
 
 	Word       string `gorm:"type:VARCHAR(100) CHARACTER SET utf8 COLLATE utf8_general_ci"`
-	Popularity uint `gorm:"default:0"`
+	Popularity uint   `gorm:"default:0"`
 }
 
 /**

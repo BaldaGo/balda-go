@@ -55,6 +55,8 @@ type ServerConf struct {
 	Game            GameConf      ///< Game configurations
 	TimeoutForLogin time.Duration ///< Timeout for login in seconds (default 120)
 	DictPath        string        ///< Russian language Dictionary path
+	SystemLogin     string
+	WaitTime        time.Duration
 }
 
 /**

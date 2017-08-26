@@ -6,21 +6,21 @@
  */
 package game
 
-
 import (
 	// System
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode/utf8"
-	"fmt"
 
 	// Third-party
+	"github.com/fatih/structs"
 
 	// Project
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/db"
-	"github.com/fatih/structs"
+	"github.com/BaldaGo/balda-go/logger"
 )
 
 const databaseError string = "DATABASE_ERROR"
@@ -54,30 +54,41 @@ type Put struct {
 }
 
 type methods struct {
-	area   func() string `description:"Shows game area"`
-	words  func() string `description:"Shows used words"`
-	step   func() string `description:"Shows name of user who's step is now"`
-	score  func() string `description:"Shows score of every user in game"`
-	help   func() string `description:"Help for you"`
-	skip   func() (bool, string, error) `description:"Command to skip (if your step is now)"`
-	put    func() string `description:"Command to put letter and tell word (if your step is now)"`
+	area  func() string                `description:"Shows game area"`
+	words func() string                `description:"Shows used words"`
+	step  func() string                `description:"Shows name of user who's step is now"`
+	score func() string                `description:"Shows score of every user in game"`
+	help  func() string                `description:"Help for you"`
+	skip  func() (bool, string, error) `description:"Command to skip (if your step is now)"`
+	put   func() string                `description:"Command to put letter and tell word (if your step is now)"`
 
-	stat_topusers func(string, int, int) (bool, string, error) `description:"Shows top of users. Parameters: mode(score, games, wins), limit"`
-	stat_topwords func(int, int) (bool, string, error) `description:"Shows top of words. Parameters: limit"`
+	stat_topusers     func(string, int, int) (bool, string, error) `description:"Shows top of users. Parameters: mode(score, games, wins), limit"`
+	stat_topwords     func(int, int) (bool, string, error)         `description:"Shows top of words. Parameters: limit"`
 	stat_wordtopusers func(string, int, int) (bool, string, error) `description:"Shows top of users used this word. Parameters: word, limit"`
-	stat_user func(string, int, int) (bool, string, error) `description:"Shows top of users. Parameters: username, limit"`
+	stat_user         func(string, int, int) (bool, string, error) `description:"Shows top of users. Parameters: username, limit"`
 }
 
 /**
  * @brief Create a new game
  * @return game Pointer to the created Game object
  */
-
 func NewGame(cfg conf.GameConf) (*Game, error) {
 	g := &Game{square: NewSquare(cfg.AreaSize)}
+
+	res, err := db.StartGame()
+	if err != nil {
+		return nil, err
+	}
+
+	g.dbGameID = res.ID
+	g.onStart = false
+	g.onPut = false
+	g.stepUser = 0
+
 	g.AreaSize = cfg.AreaSize
 	g.MaxUsersPerGame = cfg.NumberUsersPerGame
 	g.scoreMap = make(map[string]int)
+
 	g.meth.area = g.area
 	g.meth.words = g.words
 	g.meth.step = g.step
@@ -85,23 +96,17 @@ func NewGame(cfg conf.GameConf) (*Game, error) {
 	g.meth.help = g.help
 	g.meth.skip = g.skip
 	g.meth.put = g.put
+
 	g.meth.stat_topusers = g.GetTopUsersByMode
 	g.meth.stat_topwords = g.GetTopWords
 	g.meth.stat_wordtopusers = g.GetWordTopUsers
 	g.meth.stat_user = g.GetUserAllGamesStat
-	g.stepUser = 0
-	g.onStart = false
-	g.onPut = false
+
 	g.putting.funcMap = make(map[string]interface{})
 	g.putting.funcMap["coordX"] = g.coordX
 	g.putting.funcMap["coordY"] = g.coordY
 	g.putting.funcMap["letter"] = g.letter
 	g.putting.funcMap["word"] = g.word
-  res, err := db.StartGame()
-	if err != nil {
-		return nil, err
-	}
-	g.dbGameID = res.ID
 
 	return g, nil
 }
@@ -183,17 +188,17 @@ func (game *Game) AddUser(login string) error {
 		return errors.New("Can't add user to game")
 	}
 	game.users = append(game.users, login)
+	game.scoreMap[login] = 0
 
-	if _, err := db.NewUserInSession(login, game.dbGameID); err != nil{
+	if _, err := db.NewUserInSession(login, game.dbGameID); err != nil {
 		return err
 	}
-	game.scoreMap[login] = 0
+
 	return nil
 }
 
 func (game *Game) StartGame() error {
 	game.onStart = true
-
 
 	return nil
 }
@@ -201,7 +206,7 @@ func (game *Game) StartGame() error {
 func (game *Game) FinishGame(winner string) (string, error) {
 	game.onStart = false
 	err := db.GameOver(game.scoreMap, game.dbGameID, winner)
-	if err != nil{
+	if err != nil {
 		return databaseError, err
 	}
 
@@ -292,15 +297,18 @@ func (game *Game) letter(str string) (bool, string, error) {
 func (game *Game) word(str string) (bool, string, error) {
 	game.putting.word = str
 	game.onPut = false
+
 	ok := game.square.CheckWord(game.putting.y, game.putting.x, game.putting.sym, []rune(game.putting.word))
 	if ok {
 		sc := utf8.RuneCountInString(game.putting.word)
 		nowPlayer := game.users[game.stepUser]
 		game.scoreMap[nowPlayer] += sc
 
-		if _, err := db.AddWord(nowPlayer, str); err != nil{
+		if _, err := db.AddWord(nowPlayer, str); err != nil {
+			logger.Log.Critical(err.Error())
 			return false, databaseError, err
 		}
+
 		if game.square.IsFull() {
 			winner := ""
 			hs := 0
@@ -313,26 +321,29 @@ func (game *Game) word(str string) (bool, string, error) {
 					winner = ""
 				}
 			}
+
 			game.FinishGame(winner)
 			return false, strings.Join([]string{"Game over.", game.score(), "Our winner:", winner}, "\n\r"), nil
 		}
+
 		game.stepUser++
 		if game.stepUser == len(game.users) {
 			game.stepUser = 0
 		}
+
 		return true, strings.Join([]string{"Success", game.area()}, "\n\r"), nil
 	}
 	return true, "You can't add this word. Try again.", nil
 }
 
-func (game *Game) GetTopUsersByMode(mode string, limit int, offset int) (bool, string, error){
-
+func (game *Game) GetTopUsersByMode(mode string, limit int, offset int) (bool, string, error) {
 	res, err := db.GetTop(mode, uint(limit), uint(offset))
 	if err != nil {
 		return true, databaseError, err
 	}
+
 	var prepare []string
-	for i := range res{
+	for i := range res {
 		prepare = append(prepare,
 			fmt.Sprintf("Login: %s, Scores: %d, Games: %d, Wins: %d",
 				res[i].Name,
@@ -346,14 +357,14 @@ func (game *Game) GetTopUsersByMode(mode string, limit int, offset int) (bool, s
 	return true, pretty, nil
 }
 
-func (game *Game) GetTopWords(limit int, offset int) (bool, string, error){
-
+func (game *Game) GetTopWords(limit int, offset int) (bool, string, error) {
 	res, err := db.TopWords(uint(limit), uint(offset))
 	if err != nil {
 		return true, databaseError, err
 	}
+
 	var prepare []string
-	for i := range res{
+	for i := range res {
 		prepare = append(prepare,
 			fmt.Sprintf("Word: %s, Usage count: %d",
 				res[i].Word,
@@ -364,15 +375,14 @@ func (game *Game) GetTopWords(limit int, offset int) (bool, string, error){
 	return true, pretty, nil
 }
 
-func (game *Game) GetWordTopUsers(word string, limit int, offset int) (bool, string, error){
-
+func (game *Game) GetWordTopUsers(word string, limit int, offset int) (bool, string, error) {
 	res, err := db.WordTopUsers(word, uint(limit), uint(offset))
 	if err != nil {
 		return true, databaseError, err
 	}
 
 	var prepare []string
-	for key, value := range res{
+	for key, value := range res {
 		prepare = append(prepare,
 			fmt.Sprintf("User: %s, Usage count: %d",
 				key,
@@ -383,17 +393,16 @@ func (game *Game) GetWordTopUsers(word string, limit int, offset int) (bool, str
 	return true, pretty, nil
 }
 
-func (game *Game) GetUserAllGamesStat(username string, limit int, offset int) (bool, string, error){
-
+func (game *Game) GetUserAllGamesStat(username string, limit int, offset int) (bool, string, error) {
 	res, err := db.UserAllGamesStat(username, uint(limit), uint(offset))
 	if err != nil {
 		return true, databaseError, err
 	}
 
 	var prepare []string
-	for key, value := range res{
+	for key, value := range res {
 		var usersLocalList []string
-		for j := range value.Users{
+		for j := range value.Users {
 			usersLocalList = append(usersLocalList,
 				fmt.Sprintf("\t\tUser: %s, Scores: %d",
 					value.Users[j].Name,
