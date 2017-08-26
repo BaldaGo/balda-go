@@ -24,7 +24,7 @@
     "Database" : {
         "Dialect" : "mysql",
         "User" : "balda",
-        "Password": "energet",
+        "Password": "balda",
         "Host" : "db",
         "Port" : 3306,
         "Name" : "baldadb",

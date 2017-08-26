@@ -19,6 +19,7 @@ import (
 	// Project
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/db"
+	"github.com/BaldaGo/balda-go/logger"
 	"github.com/fatih/structs"
 )
 
@@ -158,7 +159,7 @@ func (game *Game) StartGame() error {
 
 func (game *Game) FinishGame(winner string) (string, error) {
 	game.onStart = false
-	err := db.GameOver(game.score, game.dbGameID, winner)
+	err := db.GameOver(game.scoreMap, game.dbGameID, winner)
 	if err != nil {
 		return "ERROR", err
 	}
@@ -253,10 +254,11 @@ func (game *Game) word(str string) (bool, string, error) {
 	ok := game.square.CheckWord(game.putting.y, game.putting.x, game.putting.sym, []rune(game.putting.word))
 	if ok {
 		sc := utf8.RuneCountInString(game.putting.word)
-		nowPlayer := game.users[game.step]
-		game.scoreMap[game.users[game.stepUser]] += sc
+		nowPlayer := game.users[game.stepUser]
+		game.scoreMap[nowPlayer] += sc
 
 		if _, err := db.AddWord(nowPlayer, str); err != nil {
+			logger.Log.Critical(err.Error())
 			return false, "DATABASE ERROR", err
 		}
 

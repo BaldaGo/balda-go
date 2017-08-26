@@ -100,12 +100,7 @@ func login(ctx context.Context) error {
 	}
 
 	// Create user if not exists
-	exists, err := db.CheckUser(name, pass)
-	if err != nil {
-		err = logger.Trace(err, "Database error")
-		logger.Log.Critical(err.Error())
-		return err
-	}
+	exists, _ := db.CheckUser(name, pass)
 
 	if !exists {
 		u, err := db.AddUser(name, pass, c.RemoteAddr().String())

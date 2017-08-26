@@ -226,8 +226,16 @@ func work(ctx context.Context) error {
 			logger.Log.Debugf("Readed '%s' from client", result)
 
 			// Game interactive
-			play, response := s.Sessions[user.sessionId].Game.Continue(string(result), user.login)
+			play, response, err := s.Sessions[user.sessionId].Game.Continue(string(result), user.login)
 			logger.Log.Debugf("Generic answers '%s'. Continue: %b", response, play)
+
+			if err != nil {
+				s.broadcast(err.Error(), s.SystemLogin, BC_ALL, errors)
+				logger.Trace(err, "Error occured while parsing")
+				terminated = true
+				break
+			}
+
 			if !play {
 				s.broadcast(response, user.login, BC_ALL, errors)
 				logger.Log.Infof("Game over! %s", response)
@@ -310,7 +318,6 @@ func asyncReadBytes(c net.Conn, buffer chan<- []byte, errors chan<- net.Conn) {
 func (s *Server) broadcast(raw string, login string, flags int, errors chan<- net.Conn) {
 	msg := fmt.Sprintf("%s> %s\n\r", login, raw)
 	sessionID := s.Users[login]
-	msg = fmt.Sprintf("%s\n", msg)
 	for _, i := range s.Sessions[sessionID].Users {
 		switch flags {
 		case BC_ALL:
