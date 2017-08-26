@@ -47,7 +47,7 @@ type User struct {
  */
 type Session struct {
 	Users []User    ///< Array of users in this session
-	Game  game.Game ///< Game object
+	Game  *game.Game ///< Game object
 }
 
 /**
@@ -106,14 +106,23 @@ func login(ctx context.Context) error {
 		return errors.New("Session ID must be a positive integer")
 	}
 
-	//TODO: Validate size of session.users
 	//TODO: Login or registr
 
 	// Create a new user object
 	newUser := User{conn: c, login: name, sessionId: SessionID}
 
 	// Associate user with a session by session id
+	err = s.Sessions[SessionID].Game.AddUser(name)
+	if err != nil {
+		return logger.Trace(err, "Can't accept the game")
+	}
 	s.Sessions[SessionID].Users = append(s.Sessions[newUser.sessionId].Users, newUser)
+	if len(s.Sessions[SessionID].Users) == s.Sessions[SessionID].Game.MaxUsersPerGame {
+		s.Sessions[SessionID].Game.StartGame()/*
+		for _, u := range s.Sessions[SessionID].Users {
+			u.conn.Write([]byte("Game started!\n"))
+		}*/
+	}
 	s.Users[newUser.login] = SessionID
 
 	user <- newUser
