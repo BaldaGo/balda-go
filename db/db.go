@@ -19,7 +19,7 @@ package db
 
 import (
 	// System
-	"bufio"
+	//"bufio"
 	"fmt"
 	"hash/fnv"
 	"os"
@@ -41,7 +41,7 @@ import (
  */
 
 var db *gorm.DB // Database main variable
-var dictSize uint
+var dictSize uint = 124049
 
 /**
  *
@@ -201,17 +201,17 @@ func LoadDictionary(path string) error {
 		return err
 	}
 
-	scanner := bufio.NewScanner(file)
+	//scanner := bufio.NewScanner(file)
 
 	logger.Log.Info("Loading dictionary. Please wait... (approximately 60 seconds)")
 
-	for scanner.Scan() {
-		dictSize++
-		var word = RusWord{Word: string(scanner.Text())}
-		if res := db.Create(&word); res.Error != nil {
-			return res.Error
-		}
-	}
+	//for scanner.Scan() {
+	//	dictSize++
+	//	var word = RusWord{Word: string(scanner.Text())}
+	//	if res := db.Create(&word); res.Error != nil {
+	//		return res.Error
+	//	}
+	//}
 
 	logger.Log.Info(fmt.Sprintf("Done. %d words uploaded. Database is ready for game", dictSize))
 

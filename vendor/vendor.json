@@ -7,6 +7,12 @@
 			"revision": ""
 		},
 		{
+			"checksumSHA1": "r1PrPAfdXzpLjmIobYRaRMsKZlc=",
+			"path": "github.com/fatih/structs",
+			"revision": "7e5a8eef611ee84dd359503f3969f80df4c50723",
+			"revisionTime": "2017-06-12T12:55:44Z"
+		},
+		{
 			"checksumSHA1": "3YCnHMM622cPWm+IkU2MydOvUZo=",
 			"path": "github.com/go-sql-driver/mysql",
 			"revision": "26471af196a17ee75a22e6481b5a5897fb16b081",

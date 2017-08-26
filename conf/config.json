@@ -23,9 +23,9 @@
     },
     "Database" : {
         "Dialect" : "mysql",
-        "User" : "balda",
-        "Password": "balda",
-        "Host" : "db",
+        "User" : "root",
+        "Password": "georgemk",
+        "Host" : "localhost",
         "Port" : 3306,
         "Name" : "baldadb",
         "Engine" : "InnoDB",
