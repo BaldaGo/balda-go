@@ -13,6 +13,7 @@ import (
 	"strings"
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/db"
+	"fmt"
 )
 
 /**
@@ -141,7 +142,7 @@ func (game *Game) printUsedWords() string {
 }
 
 func (game *Game) whoStep() string {
-	if (game.step < len(game.users)) {
+	if game.step < len(game.users) {
 		return game.users[game.step]
 	}
 	return ""
@@ -160,12 +161,12 @@ func (game *Game) showScore() string {
 
 func (game *Game) skip() (bool, string) {
 	game.skipped++
-	if (game.skipped == len(game.users)) {
+	if game.skipped == len(game.users) {
 		game.FinishGame("")
 		return false, "Game over. No winner. All users skipped."
 	}
 	game.step++
-	if (game.step == len(game.users)) {
+	if game.step == len(game.users) {
 		game.step = 0
 	}
 	return true, "You skipped"
@@ -179,7 +180,7 @@ func (game *Game) put() (string) {
 
 func (game *Game) coordX(str string) (bool, string) {
 	i, err := strconv.Atoi(str)
-	if (err != nil || i < 0 || i >= game.AreaSize) {
+	if err != nil || i < 0 || i >= game.AreaSize {
 		return true, "Invalid. Try again."
 	}
 	game.putting.x = i
@@ -189,7 +190,7 @@ func (game *Game) coordX(str string) (bool, string) {
 
 func (game *Game) coordY(str string) (bool, string) {
 	i, err := strconv.Atoi(str)
-	if (err != nil || i < 0 || i >= game.AreaSize) {
+	if err != nil || i < 0 || i >= game.AreaSize {
 		return true, "Invalid. Try again."
 	}
 	game.putting.y = i
@@ -198,7 +199,7 @@ func (game *Game) coordY(str string) (bool, string) {
 }
 
 func (game *Game) letter(str string) (bool, string) {
-	if (utf8.RuneCountInString(str) != 1) {
+	if utf8.RuneCountInString(str) != 1 {
 		return true, "Invalid. Try again."
 	}
 	game.putting.sym = []rune(str)[0]
@@ -243,3 +244,90 @@ func (game *Game) word(str string) (bool, string, error) {
 	}
 	return true, "You can't add this word. Try again.", nil
 }
+
+func (game *Game) GetTopUsersByMode(mode string, limit int, offset int) (string, error){
+
+	res, err := db.GetTop(mode, uint(limit), uint(offset))
+	if err != nil {
+		return "ERROR", err
+	}
+	var prepare []string
+	for i := range res{
+		prepare = append(prepare,
+			fmt.Sprintf("Login: %s, Scores: %d, Games: %d, Wins: %d",
+				res[i].Name,
+				res[i].Scores,
+				res[i].Games,
+				res[i].Wins))
+	}
+
+	pretty := strings.Join(prepare, "\n\r")
+
+	return pretty, nil
+}
+
+func (game *Game) GetTopWords(limit int, offset int) (string, error){
+
+	res, err := db.TopWords(uint(limit), uint(offset))
+	if err != nil {
+		return "ERROR", err
+	}
+	var prepare []string
+	for i := range res{
+		prepare = append(prepare,
+			fmt.Sprintf("Word: %s, Usage count: %d",
+				res[i].Word,
+				res[i].Popularity))
+	}
+
+	pretty := strings.Join(prepare, "\n\r")
+	return pretty, nil
+}
+
+func (game *Game) GetWordTopUsers(word string, limit int, offset int) (string, error){
+
+	res, err := db.WordTopUsers(word, uint(limit), uint(offset))
+	if err != nil {
+		return "ERROR", err
+	}
+
+	var prepare []string
+	for key, value := range res{
+		prepare = append(prepare,
+			fmt.Sprintf("User: %s, Usage count: %d",
+				key,
+				value))
+	}
+
+	pretty := strings.Join(prepare, "\n\r")
+	return pretty, nil
+}
+
+func (game *Game) GetUserAllGamesStat(username string, limit int, offset int) (string, error){
+
+	res, err := db.UserAllGamesStat(username, uint(limit), uint(offset))
+	if err != nil {
+		return "ERROR", err
+	}
+
+	var prepare []string
+	for key, value := range res{
+		var usersLocalList []string
+		for j := range value.Users{
+			usersLocalList = append(usersLocalList,
+				fmt.Sprintf("\t\tUser: %s, Scores: %d",
+					value.Users[j].Name,
+					value.Users[j].Scores))
+		}
+		anotherUsers := strings.Join(usersLocalList, "\n\r")
+		prepare = append(prepare,
+			fmt.Sprintf("GameID: %d, Winner: %s \n\rAnother players: \n\r%s",
+				key,
+				value.Winner,
+				anotherUsers))
+	}
+
+	pretty := strings.Join(prepare, "\n\r\n\r")
+	return pretty, nil
+}
+
