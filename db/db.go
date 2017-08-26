@@ -22,8 +22,8 @@ import (
 	"bufio"
 	"fmt"
 	"hash/fnv"
-	"strings"
 	"os"
+	"strings"
 
 	// Third-party
 	_ "github.com/go-sql-driver/mysql"
@@ -174,11 +174,11 @@ func Init(cfg conf.DatabaseConf) error {
 
 	if res := db.Set("gorm:insert_options", fmt.Sprintf("ENGINE=%s", cfg.Engine)).
 		AutoMigrate(&User{},
-		&RusWord{},
-		&GameSession{},
-		&UsersLexicon{},
-		&UserInGame{},
-		&UserConnection{}); res != nil {
+			&RusWord{},
+			&GameSession{},
+			&UsersLexicon{},
+			&UserInGame{},
+			&UserConnection{}); res != nil {
 		return res.Error
 	}
 	return nil
@@ -482,7 +482,7 @@ func normalizeLimitAndOrder(lenOfTable uint, limit *uint, offset *uint) {
 	if *offset >= lenOfTable {
 		*offset = 0
 	}
-	if *limit > lenOfTable - *offset {
+	if *limit > lenOfTable-*offset {
 		*limit = (lenOfTable - *offset) % *limit
 	}
 }

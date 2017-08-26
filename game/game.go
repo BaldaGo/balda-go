@@ -7,10 +7,15 @@
 package game
 
 import (
+	// System
 	"errors"
 	"strconv"
-	"unicode/utf8"
 	"strings"
+	"unicode/utf8"
+
+	// Third-party
+
+	// Project
 	"github.com/BaldaGo/balda-go/conf"
 	"github.com/BaldaGo/balda-go/db"
 	"fmt"
@@ -21,7 +26,7 @@ import (
  * @brief Class, provide information about concrete game
  */
 type Game struct {
-	square          *Square ///< Gaming area
+	square          Square ///< Gaming area
 	funcMap         map[string]interface{}
 	users           []string
 	score           map[string]int
@@ -48,8 +53,9 @@ type Put struct {
  * @brief Create a new game
  * @return game Pointer to the created Game object
  */
-func NewGame(cfg conf.GameConf) (*Game, error) {
-	g := &Game{square: NewSquare(cfg.AreaSize)}
+
+func NewGame(cfg conf.GameConf) (Game, error) {
+	g := Game{square: NewSquare(cfg.AreaSize)}
 	g.AreaSize = cfg.AreaSize
 	g.MaxUsersPerGame = cfg.NumberUsersPerGame
 	g.funcMap = make(map[string]interface{})
@@ -82,7 +88,7 @@ func (game *Game) Continue(str string, user string) (bool, string) {
 		return true, "Game didn't start"
 	}
 	if str == "area" || str == "words" || str == "step" || str == "score" {
-		return true, game.funcMap[str].(func() (string))()
+		return true, game.funcMap[str].(func() string)()
 	}
 	if game.step >= len(game.users) {
 		game.step = game.step % len(game.users)
@@ -94,7 +100,7 @@ func (game *Game) Continue(str string, user string) (bool, string) {
 		return game.funcMap[str].(func() (bool, string))()
 	}
 	if str == "put" {
-		return true, game.funcMap[str].(func() (string))()
+		return true, game.funcMap[str].(func() string)()
 	}
 	if game.onPut {
 		return game.putting.funcMap[game.putting.state].(func(string) (bool, string))(str)
@@ -172,7 +178,7 @@ func (game *Game) skip() (bool, string) {
 	return true, "You skipped"
 }
 
-func (game *Game) put() (string) {
+func (game *Game) put() string {
 	game.onPut = true
 	game.putting.state = "coordX"
 	return "Please, enter X coordinate"
