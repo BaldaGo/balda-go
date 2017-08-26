@@ -61,6 +61,11 @@ type methods struct {
 	help   func() string `description:"Help for you"`
 	skip   func() (bool, string, error) `description:"Command to skip (if your step is now)"`
 	put    func() string `description:"Command to put letter and tell word (if your step is now)"`
+
+	stat_topusers func(string, int, int) (bool, string, error) `description:"Shows top of users. Parameters: mode(score, games, wins), limit"`
+	stat_topwords func(int, int) (bool, string, error) `description:"Shows top of words. Parameters: limit"`
+	stat_wordtopusers func(string, int, int) (bool, string, error) `description:"Shows top of users used this word. Parameters: word, limit"`
+	stat_user func(string, int, int) (bool, string, error) `description:"Shows top of users. Parameters: username, limit"`
 }
 
 /**
@@ -80,6 +85,10 @@ func NewGame(cfg conf.GameConf) (*Game, error) {
 	g.meth.help = g.help
 	g.meth.skip = g.skip
 	g.meth.put = g.put
+	g.meth.stat_topusers = g.GetTopUsersByMode
+	g.meth.stat_topwords = g.GetTopWords
+	g.meth.stat_wordtopusers = g.GetWordTopUsers
+	g.meth.stat_user = g.GetUserAllGamesStat
 	g.stepUser = 0
 	g.onStart = false
 	g.onPut = false
@@ -98,6 +107,39 @@ func NewGame(cfg conf.GameConf) (*Game, error) {
 }
 
 func (game *Game) Continue(str string, user string) (bool, string, error) {
+	arr := strings.Split(str, " ")
+	if arr[0] == "stat_topusers" {
+		n, err := strconv.Atoi(arr[2])
+		if err != nil {
+			return true, "Not correct command, not integer in limit", err
+		}
+		if arr[1] != "score" && arr[1] != "games" && arr[1] != "wins" {
+			return true, "Not correct command, bad mode. You must use one of: score, games, wins.", err
+		}
+		return game.meth.stat_topusers(arr[1], n, 0)
+	}
+	if arr[0] == "stat_topwords" {
+		n, err := strconv.Atoi(arr[1])
+		if err != nil {
+			return true, "Not correct command, not integer in limit", err
+		}
+		return game.meth.stat_topwords(n, 0)
+	}
+	if arr[0] == "stat_wordtopusers" {
+		n, err := strconv.Atoi(arr[2])
+		if err != nil {
+			return true, "Not correct command, not integer in limit", err
+		}
+		return game.meth.stat_wordtopusers(arr[1], n, 0)
+	}
+	if arr[0] == "stat_user" {
+		n, err := strconv.Atoi(arr[2])
+		if err != nil {
+			return true, "Not correct command, not integer in limit", err
+		}
+		return game.meth.stat_user(arr[1], n, 0)
+	}
+
 	if !game.onStart {
 		return true, "Game didn't start", nil
 	}
@@ -132,6 +174,7 @@ func (game *Game) Continue(str string, user string) (bool, string, error) {
 	if game.onPut {
 		return game.putting.funcMap[game.putting.state].(func(string) (bool, string, error))(str)
 	}
+
 	return true, "Don't understand you.", nil
 }
 
@@ -157,7 +200,7 @@ func (game *Game) StartGame() error {
 
 func (game *Game) FinishGame(winner string) (string, error) {
 	game.onStart = false
-	err := db.GameOver(game.score, game.dbGameID, winner)
+	err := db.GameOver(game.scoreMap, game.dbGameID, winner)
 	if err != nil{
 		return databaseError, err
 	}
@@ -252,7 +295,7 @@ func (game *Game) word(str string) (bool, string, error) {
 	ok := game.square.CheckWord(game.putting.y, game.putting.x, game.putting.sym, []rune(game.putting.word))
 	if ok {
 		sc := utf8.RuneCountInString(game.putting.word)
-		nowPlayer := game.users[game.step]
+		nowPlayer := game.users[game.stepUser]
 		game.scoreMap[nowPlayer] += sc
 
 		if _, err := db.AddWord(nowPlayer, str); err != nil{
@@ -282,11 +325,11 @@ func (game *Game) word(str string) (bool, string, error) {
 	return true, "You can't add this word. Try again.", nil
 }
 
-func (game *Game) GetTopUsersByMode(mode string, limit int, offset int) (string, error){
+func (game *Game) GetTopUsersByMode(mode string, limit int, offset int) (bool, string, error){
 
 	res, err := db.GetTop(mode, uint(limit), uint(offset))
 	if err != nil {
-		return databaseError, err
+		return true, databaseError, err
 	}
 	var prepare []string
 	for i := range res{
@@ -300,14 +343,14 @@ func (game *Game) GetTopUsersByMode(mode string, limit int, offset int) (string,
 
 	pretty := strings.Join(prepare, "\n\r")
 
-	return pretty, nil
+	return true, pretty, nil
 }
 
-func (game *Game) GetTopWords(limit int, offset int) (string, error){
+func (game *Game) GetTopWords(limit int, offset int) (bool, string, error){
 
 	res, err := db.TopWords(uint(limit), uint(offset))
 	if err != nil {
-		return databaseError, err
+		return true, databaseError, err
 	}
 	var prepare []string
 	for i := range res{
@@ -318,14 +361,14 @@ func (game *Game) GetTopWords(limit int, offset int) (string, error){
 	}
 
 	pretty := strings.Join(prepare, "\n\r")
-	return pretty, nil
+	return true, pretty, nil
 }
 
-func (game *Game) GetWordTopUsers(word string, limit int, offset int) (string, error){
+func (game *Game) GetWordTopUsers(word string, limit int, offset int) (bool, string, error){
 
 	res, err := db.WordTopUsers(word, uint(limit), uint(offset))
 	if err != nil {
-		return databaseError, err
+		return true, databaseError, err
 	}
 
 	var prepare []string
@@ -337,14 +380,14 @@ func (game *Game) GetWordTopUsers(word string, limit int, offset int) (string, e
 	}
 
 	pretty := strings.Join(prepare, "\n\r")
-	return pretty, nil
+	return true, pretty, nil
 }
 
-func (game *Game) GetUserAllGamesStat(username string, limit int, offset int) (string, error){
+func (game *Game) GetUserAllGamesStat(username string, limit int, offset int) (bool, string, error){
 
 	res, err := db.UserAllGamesStat(username, uint(limit), uint(offset))
 	if err != nil {
-		return databaseError, err
+		return true, databaseError, err
 	}
 
 	var prepare []string
@@ -365,5 +408,5 @@ func (game *Game) GetUserAllGamesStat(username string, limit int, offset int) (s
 	}
 
 	pretty := strings.Join(prepare, "\n\r\n\r")
-	return pretty, nil
+	return true, pretty, nil
 }
