@@ -55,7 +55,7 @@ var dictSize uint
 type User struct {
 	gorm.Model
 
-	Name       string `gorm:"type:VARCHAR(20) CHARACTER SET utf8 COLLATE utf8_general_ci"`
+	Name       string `gorm:"type:VARCHAR(100) CHARACTER SET utf8 COLLATE utf8_general_ci"`
 	Wins       uint   `gorm:"default:0"`
 	Password   uint32
 	IpAddr     string
@@ -88,7 +88,7 @@ type UserConnection struct {
 type RusWord struct {
 	gorm.Model
 
-	Word       string `gorm:"type:VARCHAR(20) CHARACTER SET utf8 COLLATE utf8_general_ci"`
+	Word       string `gorm:"type:VARCHAR(100) CHARACTER SET utf8 COLLATE utf8_general_ci"`
 	Popularity uint `gorm:"default:0"`
 }
 
@@ -207,7 +207,7 @@ func LoadDictionary(path string) error {
 
 	for scanner.Scan() {
 		dictSize++
-		var word = RusWord{Word: scanner.Text()}
+		var word = RusWord{Word: string(scanner.Text())}
 		if res := db.Create(&word); res.Error != nil {
 			return res.Error
 		}
@@ -427,7 +427,7 @@ func AddWord(username string, word string) (*UsersLexicon, error) {
  * for all players games ++
  * for winner wins ++
  */
-func GameOver(gameStatistics map[string][2]uint, gameID uint) error {
+func GameOver(gameStatistics map[string]int, gameID uint, winner string) error {
 
 	for key, value := range gameStatistics {
 
@@ -436,9 +436,9 @@ func GameOver(gameStatistics map[string][2]uint, gameID uint) error {
 			return res.Error
 		}
 		user.Games++
-		user.Scores += value[0]
+		user.Scores += uint(value)
 
-		if value[1] == 1 {
+		if key == winner {
 			user.Wins++
 			gameSession := GameSession{}
 			if res := db.Where("id = ?", gameID).First(&gameSession); res.Error != nil {
@@ -456,7 +456,7 @@ func GameOver(gameStatistics map[string][2]uint, gameID uint) error {
 			First(&userInGame); res.Error != nil {
 			return res.Error
 		}
-		userInGame.Score = value[0]
+		userInGame.Score = uint(value)
 		if res := db.Save(&userInGame); res.Error != nil {
 			return res.Error
 		}

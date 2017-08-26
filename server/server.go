@@ -85,9 +85,12 @@ func (s *Server) PreRun(cfg conf.ServerConf) error {
 	s.Users = make(map[int]User)
 	s.Sessions = make([]Session, cfg.NumberOfGames)
 
-
+	var err error
 	for i := 0; i < len(s.Sessions); i++ {
-		s.Sessions[i].Game = game.NewGame(cfg.Game)
+		s.Sessions[i].Game, err = game.NewGame(cfg.Game)
+		if err != nil{
+			return err
+		}
 	}
 
 	s.Pool.Run()
