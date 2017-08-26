@@ -2,7 +2,6 @@ version: '2'
 
 services:
   balda:
-    image: golang:1.8
     working_dir: /code/src/github.com/BaldaGo/balda-go
     environment:
     - DEBUG=1
