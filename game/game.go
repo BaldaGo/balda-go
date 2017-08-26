@@ -22,7 +22,7 @@ import (
 	"fmt"
 )
 
-var databaseError string = "DATABASE ERROR"
+var databaseError string = "DATABASE_ERROR"
 
 /**
  * @class Game
