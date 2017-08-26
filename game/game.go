@@ -9,10 +9,10 @@ package game
 import (
 	// System
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode/utf8"
-	"fmt"
 
 	// Third-party
 
@@ -50,13 +50,13 @@ type Put struct {
 }
 
 type methods struct {
-	area   func() string `description:"Shows game area"`
-	words  func() string `description:"Shows used words"`
-	step   func() string `description:"Shows name of user who's step is now"`	
-	score  func() string `description:"Shows score of every user in game"`	
-	help   func() string `description:"Help for you"`	
-	skip   func() (bool, string, error) `description:"Command to skip (if your step is now)"`
-	put    func() string `description:"Command to put letter and tell word (if your step is now)"`
+	area  func() string                `description:"Shows game area"`
+	words func() string                `description:"Shows used words"`
+	step  func() string                `description:"Shows name of user who's step is now"`
+	score func() string                `description:"Shows score of every user in game"`
+	help  func() string                `description:"Help for you"`
+	skip  func() (bool, string, error) `description:"Command to skip (if your step is now)"`
+	put   func() string                `description:"Command to put letter and tell word (if your step is now)"`
 }
 
 /**
@@ -246,7 +246,7 @@ func (game *Game) word(str string) (bool, string, error) {
 			}
 			game.FinishGame(winner)
 			return false, strings.Join([]string{"Game over.", game.score(), "Our winner:", winner}, "\n\r"), nil
-		}		
+		}
 		game.stepUser++
 		if game.stepUser == len(game.users) {
 			game.stepUser = 0
