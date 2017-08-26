@@ -6,6 +6,7 @@
  */
 package game
 
+
 import (
 	"errors"
 	"strconv"
@@ -15,6 +16,8 @@ import (
 	"github.com/BaldaGo/balda-go/db"
 	"fmt"
 )
+
+var databaseError string = "DATABASE ERROR"
 
 /**
  * @class Game
@@ -127,7 +130,7 @@ func (game *Game) FinishGame(winner string) (string, error) {
 	game.onStart = false
 	err := db.GameOver(game.score, game.dbGameID, winner)
 	if err != nil{
-		return "ERROR", err
+		return databaseError, err
 	}
 
 	return winner, nil
@@ -222,7 +225,7 @@ func (game *Game) word(str string) (bool, string, error) {
 		game.score[nowPlayer] += sc
 
 		if _, err := db.AddWord(nowPlayer, str); err != nil{
-			return false, "DATABASE ERROR", err
+			return false, databaseError, err
 		}
 
 		if game.square.IsFull() {
@@ -249,7 +252,7 @@ func (game *Game) GetTopUsersByMode(mode string, limit int, offset int) (string,
 
 	res, err := db.GetTop(mode, uint(limit), uint(offset))
 	if err != nil {
-		return "ERROR", err
+		return databaseError, err
 	}
 	var prepare []string
 	for i := range res{
@@ -270,7 +273,7 @@ func (game *Game) GetTopWords(limit int, offset int) (string, error){
 
 	res, err := db.TopWords(uint(limit), uint(offset))
 	if err != nil {
-		return "ERROR", err
+		return databaseError, err
 	}
 	var prepare []string
 	for i := range res{
@@ -288,7 +291,7 @@ func (game *Game) GetWordTopUsers(word string, limit int, offset int) (string, e
 
 	res, err := db.WordTopUsers(word, uint(limit), uint(offset))
 	if err != nil {
-		return "ERROR", err
+		return databaseError, err
 	}
 
 	var prepare []string
@@ -307,7 +310,7 @@ func (game *Game) GetUserAllGamesStat(username string, limit int, offset int) (s
 
 	res, err := db.UserAllGamesStat(username, uint(limit), uint(offset))
 	if err != nil {
-		return "ERROR", err
+		return databaseError, err
 	}
 
 	var prepare []string
