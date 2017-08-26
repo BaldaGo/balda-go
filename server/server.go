@@ -305,6 +305,7 @@ func asyncReadBytes(c net.Conn, buffer chan<- []byte, errors chan<- net.Conn) {
 func (s *Server) broadcast(raw string, login string, flags int, errors chan<- net.Conn) {
 	msg := fmt.Sprintf("%s> %s\n\r", login, raw)
 	sessionID := s.Users[login]
+	msg = fmt.Sprintf("%s\n", msg)
 	for _, i := range s.Sessions[sessionID].Users {
 		switch flags {
 		case BC_ALL:

@@ -47,8 +47,8 @@ type User struct {
  * Session is a thing which aggregate users in one game
  */
 type Session struct {
-	Users []User    ///< Array of users in this session
-	Game  game.Game ///< Game object
+	Users []User     ///< Array of users in this session
+	Game  *game.Game ///< Game object
 }
 
 /**
