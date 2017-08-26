@@ -99,12 +99,17 @@ func (s *Server) PreRun(cfg conf.ServerConf) error {
 
 	s.Pool = NewPool(cfg.Concurrency)
 	s.Sessions = make([]Session, cfg.NumberOfGames)
+
 	s.Users = make(map[string]int)
 	s.Signals = make(chan os.Signal, 1)
 	signal.Notify(s.Signals, os.Interrupt)
 
+	var err error
 	for i := 0; i < len(s.Sessions); i++ {
-		s.Sessions[i].Game = game.NewGame(cfg.Game)
+		s.Sessions[i].Game, err = game.NewGame(cfg.Game)
+		if err != nil {
+			return err
+		}
 	}
 
 	s.Pool.Run()
